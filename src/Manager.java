@@ -1,29 +1,57 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Properties;
 import java.util.Queue;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Manager {
 
+	public static final Properties getConfig(File configFile) throws IOException {
+		Properties config = new Properties();
+
+		if (configFile.exists())
+			config.load(new FileInputStream(configFile));
+
+		return config;
+	}
+
 	public static final void main(String[] args) {
 		try {
+			if (args.length != 1) {
+				System.err.println("Usage: java Manager <config name>");
+				System.exit(1);
+			}
+
+			// Read the config name from command line arguments
+			String configName = args[0];
+
+			Properties config = Manager.getConfig(new File("manager.ini"));
+
 			HashMap<String, String> parameters = new HashMap<String, String>();
 
-			// Count how many available cores we have
+			// Count how many available cores we should use (max)
 			int coreCount = Runtime.getRuntime().availableProcessors();
+			if (config.containsKey("coreCount")) {
+				int overrideCoreCount = Integer.parseInt(config.getProperty("coreCount"));
+				if (overrideCoreCount > coreCount)
+					throw new RuntimeException("coreCount(" + overrideCoreCount + ") in config is higher than real coreCount(" + coreCount + "). This is a bad idea!");
 
-			// TODO: These should be read from args, or a config file, or something
-			File workingDir = new File("/home/jamie/Development/oversim/OverSim-20101103/simulations");
-			String configName = "EpiChordLarge";
+				coreCount = overrideCoreCount;
+			}
 
-			Manager manager = new Manager(coreCount, workingDir, configName, parameters);
+			// Set the working directory and config file
+			File workingDir = new File(config.getProperty("working-dir", "."));
+			String configFile = config.getProperty("config-file", "omnetpp.ini");
+
+			Manager manager = new Manager(coreCount, workingDir, configFile, configName, parameters);
 			manager.start();
 		}
 		catch (IOException e) {
@@ -34,11 +62,15 @@ public class Manager {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		catch (NumberFormatException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
-	public static int countRuns(File workingDir, String configName) throws IOException
+	public static int countRuns(File workingDir, String configFile, String configName) throws IOException
 	{
-		Process process = Runtime.getRuntime().exec("../src/OverSim -x" + configName, null, workingDir);
+		Process process = Runtime.getRuntime().exec("../src/OverSim -f" + configFile + " -x" + configName, null, workingDir);
 
 		BufferedReader in = null;
 		int runs = 0;
@@ -71,11 +103,11 @@ public class Manager {
 	protected final List<SimulationThread> threads;
 	protected boolean finished;
 
-	public Manager(int processCount, File workingDir, String configName) throws IOException {
-		this (processCount, workingDir, configName, new HashMap<String, String>());
+	public Manager(int processCount, File workingDir, String configFile, String configName) throws IOException {
+		this (processCount, workingDir, configFile, configName, new HashMap<String, String>());
 	}
 
-	public Manager(int processCount, File workingDir, String configName, HashMap<String, String> parameters) throws IOException {
+	public Manager(int processCount, File workingDir, String configFile, String configName, HashMap<String, String> parameters) throws IOException {
 		this.workingDir = workingDir;
 		this.parameters = parameters;
 
@@ -93,13 +125,16 @@ public class Manager {
 
 		threads = new ArrayList<SimulationThread>(processCount);
 
-		int totalRunCount = Manager.countRuns(workingDir, configName); // Fetch the total run count
+		int totalRunCount = Manager.countRuns(workingDir, configFile, configName); // Fetch the total run count
+		if (totalRunCount == 0)
+			throw new RuntimeException("Invalid config name, 0 runs found.");
+
 		int perProcess = (int) Math.ceil((double)totalRunCount / (double)processCount);
 		List<SimulationRun> totalRuns = new ArrayList<SimulationRun>(totalRunCount);
 
 		// Create the list of simulation runs
 		for (int i = 0;i < totalRunCount;i++) {
-			SimulationRun run = new SimulationRun(configName, i);
+			SimulationRun run = new SimulationRun(configFile, configName, i);
 			totalRuns.add(run);
 		}
 

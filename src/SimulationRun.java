@@ -5,19 +5,22 @@ import java.util.Map;
 
 public class SimulationRun {
 
+	protected final String configFile;
 	protected final String configName;
 	protected final int runID;
 
-	public SimulationRun(String configName, int runID) {
+	public SimulationRun(String configFile, String configName, int runID) {
+		this.configFile = configFile;
 		this.configName = configName;
 		this.runID = runID;
 	}
 
 	public int run(File workingDir, HashMap<String, String> parameters) throws IOException, InterruptedException {
-		String[] cmd = new String[4 + parameters.size()];
+		String[] cmd = new String[5 + parameters.size()];
 		int index = 0;
 
 		cmd[index++] = "../src/OverSim";
+		cmd[index++] = "-f" + configFile;
 		cmd[index++] = "-c" + configName;
 		cmd[index++] = "-uCmdenv";
 		cmd[index++] = "-r" + runID;
@@ -37,11 +40,11 @@ public class SimulationRun {
 			return false;
 
 		SimulationRun run = (SimulationRun) o;
-		return configName.equals(run.configName) && runID == run.runID;
+		return configFile.equals(run.configFile) && configName.equals(run.configName) && runID == run.runID;
 	}
 
 	@Override
 	public String toString() {
-		return "SimulationRun(name = '" + configName + "'; id = " + runID + ";)";
+		return "SimulationRun(file = '" + configFile + "'; name = '" + configName + "'; id = " + runID + ";)";
 	}
 }
