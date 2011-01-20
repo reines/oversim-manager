@@ -126,7 +126,7 @@ public class Manager {
 		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
 	}
 
-	public synchronized void start() throws InterruptedException {
+	public synchronized void start() throws InterruptedException, IOException {
 		// Start all our threads
 		for (SimulationThread thread : threads)
 			thread.start();
@@ -143,21 +143,10 @@ public class Manager {
 		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
 
 		// Save the raw results into an archive
-		try {
-			// This isn't really portable - really we should use apache commons compression library to create a .tar.gz ourself
-			String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
+		String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
 
-			Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
-			process.waitFor();
-		}
-		catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
+		process.waitFor();
 
 		System.out.println("Data compression completed, terminating.");
 	}
