@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
@@ -20,7 +19,11 @@ public class Manager {
 			// Count how many available cores we have
 			int coreCount = Runtime.getRuntime().availableProcessors();
 
-			Manager manager = new Manager(coreCount, new File("/home/jamie/Development/oversim/OverSim-20101103/simulations"), "EpiChordLarge", parameters);
+			// TODO: These should be read from args, or a config file, or something
+			File workingDir = new File("/home/jamie/Development/oversim/OverSim-20101103/simulations");
+			String configName = "EpiChordLarge";
+
+			Manager manager = new Manager(coreCount, workingDir, configName, parameters);
 			manager.start();
 		}
 		catch (IOException e) {
@@ -58,6 +61,7 @@ public class Manager {
 	}
 
 	protected final File workingDir;
+	protected final File resultRootDir;
 	protected final File resultDir;
 	protected final HashMap<String, String> parameters;
 	protected final List<SimulationThread> threads;
@@ -70,11 +74,11 @@ public class Manager {
 		this.workingDir = workingDir;
 		this.parameters = parameters;
 
-		File resultRootDir = new File(workingDir, parameters.containsKey("result-dir") ? parameters.get("result-dir") : "results");
+		resultRootDir = new File(workingDir, parameters.containsKey("result-dir") ? parameters.get("result-dir") : "results");
 		if (!resultRootDir.isDirectory())
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getAbsolutePath());
 
-		resultDir = new File(resultRootDir, configName + "-" + (new Date()));
+		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
 		if (!resultDir.mkdir())
 			throw new RuntimeException("Unable to create result subdirectory.");
 
@@ -128,8 +132,30 @@ public class Manager {
 		// TODO: Combine the collated data with any existing
 
 		if (threads.isEmpty()) {
-			System.out.println("All runs completed, terminating.");
-			// TODO: Save the results somewhere, and tar up the raw data
+			System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
+
+			// TODO: Save the collated data to a CSV file
+
+			System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
+
+			// Save the raw results into an archive
+			try {
+				// This isn't really portable - really we should use apache commons compression library to create a .tar.gz ourself
+				String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
+
+				Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
+				process.waitFor();
+			}
+			catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			System.out.println("Data compression completed, terminating.");
 		}
 	}
 }
