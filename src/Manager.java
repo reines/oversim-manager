@@ -30,6 +30,10 @@ public class Manager {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 
 	public static int countRuns(File workingDir, String configName) throws IOException
@@ -65,6 +69,7 @@ public class Manager {
 	protected final File resultDir;
 	protected final HashMap<String, String> parameters;
 	protected final List<SimulationThread> threads;
+	protected boolean finished;
 
 	public Manager(int processCount, File workingDir, String configName) throws IOException {
 		this (processCount, workingDir, configName, new HashMap<String, String>());
@@ -73,6 +78,8 @@ public class Manager {
 	public Manager(int processCount, File workingDir, String configName, HashMap<String, String> parameters) throws IOException {
 		this.workingDir = workingDir;
 		this.parameters = parameters;
+
+		finished = false;
 
 		resultRootDir = new File(workingDir, parameters.containsKey("result-dir") ? parameters.get("result-dir") : "results");
 		if (!resultRootDir.isDirectory())
@@ -119,10 +126,40 @@ public class Manager {
 		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
 	}
 
-	public synchronized void start() {
+	public synchronized void start() throws InterruptedException {
 		// Start all our threads
 		for (SimulationThread thread : threads)
 			thread.start();
+
+		while (!finished)
+			this.wait();
+
+		// All child threads have now finished, so lets process the data
+
+		System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
+
+		// TODO: Save the collated data to a CSV file
+
+		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
+
+		// Save the raw results into an archive
+		try {
+			// This isn't really portable - really we should use apache commons compression library to create a .tar.gz ourself
+			String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
+
+			Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
+			process.waitFor();
+		}
+		catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		System.out.println("Data compression completed, terminating.");
 	}
 
 	public synchronized void notifyCompletion(SimulationThread thread, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
@@ -131,31 +168,10 @@ public class Manager {
 
 		// TODO: Combine the collated data with any existing
 
+		// This was the final thread, so notify the main thread
 		if (threads.isEmpty()) {
-			System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
-
-			// TODO: Save the collated data to a CSV file
-
-			System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
-
-			// Save the raw results into an archive
-			try {
-				// This isn't really portable - really we should use apache commons compression library to create a .tar.gz ourself
-				String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
-
-				Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
-				process.waitFor();
-			}
-			catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-
-			System.out.println("Data compression completed, terminating.");
+			finished = true;
+			this.notify();
 		}
 	}
 }
