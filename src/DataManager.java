@@ -5,7 +5,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -22,12 +21,12 @@ import org.apache.commons.lang.StringUtils;
 public class DataManager {
 
 	protected final Set<String> headers;
-	protected final Map<String, Queue<Collection<String>>> data;
+	protected final Map<String, Queue<String[]>> data;
 	protected File resultDir;
 
 	public DataManager() {
 		headers = new HashSet<String>();
-		data = new HashMap<String, Queue<Collection<String>>>();
+		data = new HashMap<String, Queue<String[]>>();
 	}
 
 	public void consumeData(SimulationRun simulation) throws IOException {
@@ -86,7 +85,18 @@ public class DataManager {
 				scalars.put(m.group(2), m.group(3));
 			}
 
-			// TODO: Add some important attributes as scalars
+			// Add the iterationvars as scalars
+			Matcher m = Pattern.compile("\\$([^=]+)=([^,\"]+)(?:[,\"]|$)").matcher(attributes.get("iterationvars"));
+			while (m.find()) {
+				String value = m.group(2);
+				// If the value has a unit, remove it
+				// TODO: There are more valid units than just "s"
+				if (value.matches("^[\\d\\.]+s$"))
+					value = value.substring(0, value.length() - 1);
+
+				// TODO: the headers don't seem to be created properly??
+				scalars.put(m.group(1), value);
+			}
 
 			// TODO: Handle any vectors?
 		}
@@ -100,10 +110,10 @@ public class DataManager {
 			String uid = attributes.get("iterationvars");
 
 			// Fetch the queue of data for this set of parameters
-			Queue<Collection<String>> queue = data.get(uid);
+			Queue<String[]> queue = data.get(uid);
 			if (queue == null) {
 				// If we already have a queue yet, create one
-				queue = new LinkedList<Collection<String>>();
+				queue = new LinkedList<String[]>();
 				data.put(uid, queue);
 			}
 
@@ -112,12 +122,12 @@ public class DataManager {
 				headers.addAll(scalars.keySet());
 
 			// Add this data to the end of the queue
-			queue.add(scalars.values());
+			queue.add(scalars.values().toArray(new String[scalars.size()]));
 		}
 	}
 
 	public synchronized void writeCSV(File csvFile) throws IOException {
-		if (data.isEmpty())
+		if (headers.isEmpty())
 			throw new RuntimeException("Cannot write empty data set to CSV.");
 
 		PrintWriter out = null;
@@ -129,20 +139,33 @@ public class DataManager {
 			out.println(StringUtils.join(headers, ','));
 
 			// Reduce all the queues down to a single set of scalars
-			for (Map.Entry<String, Queue<Collection<String>>> entry : data.entrySet()) {
-				Queue<Collection<String>> queue = entry.getValue();
+			for (Map.Entry<String, Queue<String[]>> entry : data.entrySet()) {
+				Queue<String[]> queue = entry.getValue();
 				int queueSize = queue.size();
 
 				// Remove the head of the queue, we will use this to store the final results
-				Collection<String> scalars = queue.poll();
+				String[] scalars = queue.poll();
 
 				// If the queue had more than 1 set of scalars in it, we need to process them
 				if (queueSize > 1) {
-					for (Collection<String> next;(next = queue.poll()) != null;) {
-						// TODO: Add the values from next to the values from scalars
+					for (String[] next;(next = queue.poll()) != null;) {
+						for (int i = 0;i < scalars.length;i++) {
+							try {
+								double value = Double.parseDouble(scalars[i]) + Double.parseDouble(next[i]);
+								scalars[i] = String.valueOf(value);
+							}
+							catch (NumberFormatException e) { }
+						}
 					}
 
-					// TODO: For each value in scalars, divide it by queueSize to get the mean again
+					// For each value in scalars, divide it by queueSize to get the mean again
+					for (int i = 0;i < scalars.length;i++) {
+						try {
+							double value = Double.parseDouble(scalars[i]);
+							scalars[i] = String.valueOf(value / queueSize);
+						}
+						catch (NumberFormatException e) { }
+					}
 				}
 
 				// Put the collection into a CSV record
