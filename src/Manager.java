@@ -15,6 +15,8 @@ import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.lang.time.DurationFormatUtils;
+
 public class Manager {
 
 	public static final Properties getConfig(File configFile) throws IOException {
@@ -216,6 +218,7 @@ public class Manager {
 		}
 
 		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
+		System.out.println("-------------------------------------");
 	}
 
 	public synchronized void start() throws InterruptedException, IOException {
@@ -227,6 +230,7 @@ public class Manager {
 			this.wait();
 
 		// All child threads have now finished, so lets process the data
+		System.out.println("-------------------------------------");
 
 		System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
 
@@ -235,16 +239,22 @@ public class Manager {
 		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
 
 		// Save the raw results into an archive
-		String[] cmd = {"tar", "-czvf", resultDir.getName() + ".tar.gz", resultDir.getName()};
+		List<String> command = new LinkedList<String>();
 
-		Process process = Runtime.getRuntime().exec(cmd, null, resultRootDir);
+		command.add("tar");
+		command.add("-czf");
+		command.add(resultDir.getName() + ".tar.gz");
+		command.add(resultDir.getName());
+
+		Process process = new ProcessBuilder(command).directory(resultRootDir).start();
 		process.waitFor();
 
+		System.out.println("-------------------------------------");
 		System.out.println("Data compression completed, terminating.");
 	}
 
-	public synchronized void notifyCompletion(SimulationThread thread, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
-		System.out.println(thread + " completed all simulations, terminating.");
+	public synchronized void notifyCompletion(SimulationThread thread, long duration, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
+		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
 		threads.remove(thread);
 
 		// TODO: Combine the collated data with any existing

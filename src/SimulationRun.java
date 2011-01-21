@@ -13,24 +13,28 @@ public class SimulationRun {
 
 	protected final String configFile;
 	protected final String configName;
-	protected final int runID;
+	protected final int runId;
 	protected final File logDir;
 
-	public SimulationRun(String configFile, String configName, int runID, File logDir) {
+	public SimulationRun(String configFile, String configName, int runId, File logDir) {
 		this.configFile = configFile;
 		this.configName = configName;
-		this.runID = runID;
+		this.runId = runId;
 		this.logDir = logDir;
 	}
 
-	public int run(File workingDir, HashMap<String, String> parameters, File overSim) throws IOException, InterruptedException {
+	public int getRunId() {
+		return runId;
+	}
+
+	public long run(File workingDir, HashMap<String, String> parameters, File overSim) throws IOException, InterruptedException {
 		List<String> command = new LinkedList<String>();
 
 		command.add(overSim.getAbsolutePath());
 		command.add("-f" + configFile);
 		command.add("-c" + configName);
 		command.add("-uCmdenv");
-		command.add("-r" + runID);
+		command.add("-r" + runId);
 
 		// Append any special parameters
 		for (Map.Entry<String, String> entry : parameters.entrySet())
@@ -41,11 +45,13 @@ public class SimulationRun {
 		processBuilder.directory(workingDir);
 		processBuilder.redirectErrorStream(true);
 
+		long startTime = System.currentTimeMillis();
+
 		Process process = processBuilder.start();
 
 		// If we have a log directory then lets save a log
 		if (logDir != null) {
-			File logFile = new File(logDir, "run" + runID + ".log");
+			File logFile = new File(logDir, "run" + runId + ".log");
 
 			BufferedReader in = null;
 			PrintWriter out = null;
@@ -67,7 +73,11 @@ public class SimulationRun {
 		}
 
 		// Wait for the process to end (if we were logging it already has, but thats fine)
-		return process.waitFor();
+		int result = process.waitFor();
+		if (result != 0)
+			throw new RuntimeException("OverSim process exited with result code: " + result);
+
+		return System.currentTimeMillis() - startTime;
 	}
 
 	@Override
@@ -76,11 +86,11 @@ public class SimulationRun {
 			return false;
 
 		SimulationRun run = (SimulationRun) o;
-		return configFile.equals(run.configFile) && configName.equals(run.configName) && runID == run.runID;
+		return configFile.equals(run.configFile) && configName.equals(run.configName) && runId == run.runId;
 	}
 
 	@Override
 	public String toString() {
-		return "SimulationRun(file = '" + configFile + "'; name = '" + configName + "'; id = " + runID + ";)";
+		return "SimulationRun(file = '" + configFile + "'; name = '" + configName + "'; id = " + runId + ";)";
 	}
 }

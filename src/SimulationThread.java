@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Queue;
 
+import org.apache.commons.lang.time.DurationFormatUtils;
+
 public class SimulationThread extends Thread {
 
 	protected final File overSim;
@@ -31,6 +33,8 @@ public class SimulationThread extends Thread {
 
 	@Override
 	public void run() {
+		long startTime = System.currentTimeMillis();
+
 		while (true) {
 			try {
 				SimulationRun simulation = null;
@@ -42,19 +46,21 @@ public class SimulationThread extends Thread {
 				if (simulation == null)
 					break;
 
-				System.out.println(this + " starting " + simulation + ".");
-				int result = simulation.run(workingDir, parameters, overSim);
+				try {
+					System.out.println(this + " starting " + simulation + ".");
+					long duration = simulation.run(workingDir, parameters, overSim);
 
-				// If the exit value wasn't 0 then something went wrong
-				if (result != 0) {
+					// Mark this simulation as completed
+					System.out.println(this + " completed " + simulation + " in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ".");
+					completed.add(simulation);
+				}
+				catch (RuntimeException e) {
+					System.err.println(e.getMessage());
+
+					// Something went wrong, mark as failed
 					System.out.println(this + " failed " + simulation + ".");
 					failed.add(simulation);
-					continue;
 				}
-
-				// Mark this simulation as completed
-				System.out.println(this + " completed " + simulation + ".");
-				completed.add(simulation);
 			}
 			catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -68,7 +74,7 @@ public class SimulationThread extends Thread {
 
 		// TODO: Collate the data, then pass it to the manager via notifyCompletion
 
-		manager.notifyCompletion(this, completed, failed);
+		manager.notifyCompletion(this, System.currentTimeMillis() - startTime, completed, failed);
 	}
 
 	@Override
