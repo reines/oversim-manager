@@ -6,6 +6,7 @@ import java.util.Queue;
 
 public class SimulationThread extends Thread {
 
+	protected final File overSim;
 	protected final Manager manager;
 	protected final File workingDir;
 	protected final HashMap<String, String> parameters;
@@ -13,10 +14,11 @@ public class SimulationThread extends Thread {
 	protected final Queue<SimulationRun> completed;
 	protected final Queue<SimulationRun> failed;
 
-	public SimulationThread(Manager manager, File workingDir, HashMap<String, String> parameters) {
+	public SimulationThread(Manager manager, File workingDir, HashMap<String, String> parameters, File overSim) {
 		this.manager = manager;
 		this.workingDir = workingDir;
 		this.parameters = parameters;
+		this.overSim = overSim;
 
 		runs = new LinkedList<SimulationRun>();
 		completed = new LinkedList<SimulationRun>();
@@ -41,15 +43,17 @@ public class SimulationThread extends Thread {
 					break;
 
 				System.out.println(this + " starting " + simulation + ".");
-				int result = simulation.run(workingDir, parameters);
+				int result = simulation.run(workingDir, parameters, overSim);
 
 				// If the exit value wasn't 0 then something went wrong
 				if (result != 0) {
+					System.out.println(this + " failed " + simulation + ".");
 					failed.add(simulation);
 					continue;
 				}
 
 				// Mark this simulation as completed
+				System.out.println(this + " completed " + simulation + ".");
 				completed.add(simulation);
 			}
 			catch (IOException e) {
