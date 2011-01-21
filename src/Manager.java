@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.Scanner;
@@ -17,7 +18,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.time.DurationFormatUtils;
 
-public class Manager {
+public class Manager extends DataManager {
 
 	public static final Properties getConfig(File configFile) throws IOException {
 		Properties config = new Properties();
@@ -40,7 +41,7 @@ public class Manager {
 
 			Properties config = Manager.getConfig(new File("manager.ini"));
 
-			HashMap<String, String> parameters = new HashMap<String, String>();
+			Map<String, String> parameters = new HashMap<String, String>();
 
 			// Count how many available cores we should use (max)
 			int maxThreads = Runtime.getRuntime().availableProcessors();
@@ -148,9 +149,8 @@ public class Manager {
 	protected final File overSim;
 	protected final File workingDir;
 	protected final File resultRootDir;
-	protected final File resultDir;
 	protected final File logDir;
-	protected final HashMap<String, String> parameters;
+	protected final Map<String, String> parameters;
 	protected final List<SimulationThread> threads;
 	protected boolean finished;
 
@@ -158,7 +158,7 @@ public class Manager {
 		this (maxThreads, workingDir, configFile, configName, new HashMap<String, String>());
 	}
 
-	public Manager(int maxThreads, File workingDir, String configFile, String configName, HashMap<String, String> parameters) throws IOException {
+	public Manager(int maxThreads, File workingDir, String configFile, String configName, Map<String, String> parameters) throws IOException {
 		this.workingDir = workingDir;
 		this.parameters = parameters;
 
@@ -168,13 +168,13 @@ public class Manager {
 		if (!resultRootDir.isDirectory())
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getAbsolutePath());
 
-		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
-		if (!resultDir.mkdir())
+		super.resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
+		if (!super.resultDir.mkdir())
 			throw new RuntimeException("Unable to create result subdirectory.");
 
-		parameters.put("result-dir", resultDir.getAbsolutePath());
+		parameters.put("result-dir", super.resultDir.getAbsolutePath());
 
-		logDir = new File(resultDir, "logs");
+		logDir = new File(super.resultDir, "logs");
 		if (!logDir.mkdir())
 			throw new RuntimeException("Unable to create logs subdirectory.");
 
@@ -232,11 +232,12 @@ public class Manager {
 		// All child threads have now finished, so lets process the data
 		System.out.println("-------------------------------------");
 
-		System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
+		System.out.println("Creating CSV file at: " + super.resultDir.getName() + ".csv");
 
-		// TODO: Save the collated data to a CSV file
+		// Save the collated data to a CSV file
+		super.writeCSV(new File(resultRootDir, super.resultDir.getName() + ".csv"));
 
-		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
+		System.out.println("Compressing raw data to: " + super.resultDir.getName() + ".tar.gz");
 
 		// Save the raw results into an archive
 		List<String> command = new LinkedList<String>();
@@ -256,8 +257,6 @@ public class Manager {
 	public synchronized void notifyCompletion(SimulationThread thread, long duration, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
 		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
 		threads.remove(thread);
-
-		// TODO: Combine the collated data with any existing
 
 		// This was the final thread, so notify the main thread
 		if (threads.isEmpty()) {

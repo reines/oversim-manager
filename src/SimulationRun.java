@@ -4,7 +4,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -23,11 +22,19 @@ public class SimulationRun {
 		this.logDir = logDir;
 	}
 
+	public String getConfigFile() {
+		return configFile;
+	}
+
+	public String getConfigName() {
+		return configName;
+	}
+
 	public int getRunId() {
 		return runId;
 	}
 
-	public long run(File workingDir, HashMap<String, String> parameters, File overSim) throws IOException, InterruptedException {
+	public long run(File workingDir, Map<String, String> parameters, File overSim) throws IOException, InterruptedException {
 		List<String> command = new LinkedList<String>();
 
 		command.add(overSim.getAbsolutePath());

@@ -1,7 +1,7 @@
 import java.io.File;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.Queue;
 
 import org.apache.commons.lang.time.DurationFormatUtils;
@@ -11,12 +11,12 @@ public class SimulationThread extends Thread {
 	protected final File overSim;
 	protected final Manager manager;
 	protected final File workingDir;
-	protected final HashMap<String, String> parameters;
+	protected final Map<String, String> parameters;
 	protected final Queue<SimulationRun> runs;
 	protected final Queue<SimulationRun> completed;
 	protected final Queue<SimulationRun> failed;
 
-	public SimulationThread(Manager manager, File workingDir, HashMap<String, String> parameters, File overSim) {
+	public SimulationThread(Manager manager, File workingDir, Map<String, String> parameters, File overSim) {
 		this.manager = manager;
 		this.workingDir = workingDir;
 		this.parameters = parameters;
@@ -72,7 +72,16 @@ public class SimulationThread extends Thread {
 			}
 		}
 
-		// TODO: Collate the data, then pass it to the manager via notifyCompletion
+		// For all the completed simulations, consume their data
+		for (SimulationRun simulation : completed) {
+			try {
+				manager.consumeData(simulation);
+			}
+			catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 
 		manager.notifyCompletion(this, System.currentTimeMillis() - startTime, completed, failed);
 	}
