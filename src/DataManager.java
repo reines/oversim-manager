@@ -95,16 +95,8 @@ public class DataManager {
 
 			// Add the iterationvars as scalars
 			Matcher m = Pattern.compile("\\$([^=]+)=([^,\"]+)(?:[,\"]|$)").matcher(attributes.get("iterationvars"));
-			while (m.find()) {
-				String value = m.group(2);
-				// If the value has a unit, remove it
-				// TODO: There are more valid units than just "s"
-				if (value.matches("^[\\d\\.]+s$"))
-					value = value.substring(0, value.length() - 1);
-
-				// TODO: the headers don't seem to be created properly??cd
-				scalars.put(m.group(1), value);
-			}
+			while (m.find())
+				scalars.put(m.group(1), m.group(2));
 
 			// TODO: Handle any vectors?
 		}

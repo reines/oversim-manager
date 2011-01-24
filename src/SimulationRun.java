@@ -82,7 +82,7 @@ public class SimulationRun {
 		// Wait for the process to end (if we were logging it already has, but thats fine)
 		int result = process.waitFor();
 		if (result != 0)
-			throw new RuntimeException("OverSim process exited with result code: " + result);
+			throw new RuntimeException("OverSim run " + runId + " exited with result code: " + result);
 
 		return System.currentTimeMillis() - startTime;
 	}
