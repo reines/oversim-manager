@@ -1,6 +1,5 @@
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -10,24 +9,18 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Queue;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.configuration.ConversionException;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.time.DurationFormatUtils;
 
 public class Manager extends DataManager {
-
-	public static final Properties getConfig(File configFile) throws IOException {
-		Properties config = new Properties();
-
-		if (configFile.exists())
-			config.load(new FileInputStream(configFile));
-
-		return config;
-	}
 
 	public static final void main(String[] args) {
 		try {
@@ -39,30 +32,12 @@ public class Manager extends DataManager {
 			// Read the config name from command line arguments
 			String configName = args[0];
 
-			Properties config = Manager.getConfig(new File("manager.ini"));
+			// Load the config file
+			PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
 
-			Map<String, String> parameters = new HashMap<String, String>();
+			// TODO: Setup defaults/check for missing
 
-			// Count how many available cores we should use (max)
-			int maxThreads = Runtime.getRuntime().availableProcessors();
-			if (config.containsKey("max-threads")) {
-				try {
-					int overrideCoreCount = Integer.parseInt(config.getProperty("coreCount"));
-					if (overrideCoreCount > maxThreads)
-						throw new RuntimeException("max threads (" + overrideCoreCount + ") in config is higher than phyiscal core count (" + maxThreads + "). This is a bad idea!");
-
-					maxThreads = overrideCoreCount;
-				}
-				catch (NumberFormatException e) {
-					throw new RuntimeException("Malformed configuration, max-threads must be an integer!");
-				}
-			}
-
-			// Set the working directory and config file
-			File workingDir = new File(config.getProperty("working-dir", "."));
-			String configFile = config.getProperty("config-file", "omnetpp.ini");
-
-			Manager manager = new Manager(maxThreads, workingDir, configFile, configName, parameters);
+			Manager manager = new Manager(config, configName);
 			manager.start();
 		}
 		catch (IOException e) {
@@ -70,6 +45,10 @@ public class Manager extends DataManager {
 			e.printStackTrace();
 		}
 		catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		catch (ConfigurationException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -112,40 +91,6 @@ public class Manager extends DataManager {
 		throw new FileNotFoundException("Unable to locate OverSim executable.");
 	}
 
-	public int countRuns(String configFile, String configName) throws IOException
-	{
-		List<String> command = new LinkedList<String>();
-
-		command.add(overSim.getAbsolutePath());
-		command.add("-f" + configFile);
-		command.add("-x" + configName);
-
-		Process process = new ProcessBuilder(command).directory(workingDir).start();
-
-		BufferedReader in = null;
-		int runs = 0;
-
-		try {
-			in = new BufferedReader(new InputStreamReader(process.getInputStream()));
-
-			Pattern p = Pattern.compile("Number of runs: (\\d+)");
-			for (String line;(line = in.readLine()) != null;) {
-				Matcher m = p.matcher(line);
-				if (m.find())
-				{
-					runs = Integer.parseInt(m.group(1));
-					break;
-				}
-			}
-		}
-		finally {
-			if (in != null)
-				in.close();
-		}
-
-		return runs;
-	}
-
 	protected final File overSim;
 	protected final File workingDir;
 	protected final File resultRootDir;
@@ -154,13 +99,32 @@ public class Manager extends DataManager {
 	protected final List<SimulationThread> threads;
 	protected boolean finished;
 
-	public Manager(int maxThreads, File workingDir, String configFile, String configName) throws IOException {
-		this (maxThreads, workingDir, configFile, configName, new HashMap<String, String>());
-	}
+	public Manager(Configuration config, String configName) throws IOException {
+		super (config);
 
-	public Manager(int maxThreads, File workingDir, String configFile, String configName, Map<String, String> parameters) throws IOException {
-		this.workingDir = workingDir;
-		this.parameters = parameters;
+		// Count how many available cores we should use (max)
+		int maxThreads = Runtime.getRuntime().availableProcessors();
+		if (config.containsKey("simulation.max-threads")) {
+			try {
+				int overrideCoreCount = config.getInt("simulation.max-threads");
+				if (overrideCoreCount > maxThreads)
+					throw new RuntimeException("max threads (" + overrideCoreCount + ") in config is higher than phyiscal core count (" + maxThreads + "). This is a bad idea!");
+
+				maxThreads = overrideCoreCount;
+			}
+			catch (ConversionException e) {
+				throw new RuntimeException("Malformed configuration, max-threads must be an integer!");
+			}
+		}
+
+		// Create a map to hold overriding OverSim parameters
+		parameters = new HashMap<String, String>();
+
+		// TODO: Load in any override parameters
+
+		// Set the working directory and config file
+		workingDir = new File(config.getString("simulation.working-dir", "."));
+		String configFile = config.getString("simulation.config-file", "omnetpp.ini");
 
 		finished = false;
 
@@ -219,6 +183,40 @@ public class Manager extends DataManager {
 
 		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
 		System.out.println("-------------------------------------");
+	}
+
+	public int countRuns(String configFile, String configName) throws IOException
+	{
+		List<String> command = new LinkedList<String>();
+
+		command.add(overSim.getAbsolutePath());
+		command.add("-f" + configFile);
+		command.add("-x" + configName);
+
+		Process process = new ProcessBuilder(command).directory(workingDir).start();
+
+		BufferedReader in = null;
+		int runs = 0;
+
+		try {
+			in = new BufferedReader(new InputStreamReader(process.getInputStream()));
+
+			Pattern p = Pattern.compile("Number of runs: (\\d+)");
+			for (String line;(line = in.readLine()) != null;) {
+				Matcher m = p.matcher(line);
+				if (m.find())
+				{
+					runs = Integer.parseInt(m.group(1));
+					break;
+				}
+			}
+		}
+		finally {
+			if (in != null)
+				in.close();
+		}
+
+		return runs;
 	}
 
 	public synchronized void start() throws InterruptedException, IOException {

@@ -6,26 +6,36 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
-import java.util.Set;
 import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
 
 public class DataManager {
 
-	protected final Set<String> headers;
+	protected final Configuration config;
+	protected final String[] wantedScalars;
+	protected final SortedSet<String> headers;
 	protected final Map<String, Queue<String[]>> data;
 	protected File resultDir;
 
-	public DataManager() {
-		headers = new HashSet<String>();
+	public DataManager(Configuration config) {
+		this.config = config;
+
+		// Fetch a list of scalars that we care about, then quote them so they are usable inside a regex
+		wantedScalars = config.getStringArray("data.scalar");
+		for (int i = 0;i < wantedScalars.length;i++)
+			wantedScalars[i] = Pattern.quote(wantedScalars[i]);
+
+		headers = new TreeSet<String>();
 		data = new HashMap<String, Queue<String[]>>();
 	}
 
@@ -69,7 +79,7 @@ public class DataManager {
 				throw new RuntimeException("Malformed scalar file, no iterationvars found: " + sca.getAbsolutePath());
 
 			// Read the scalars
-			Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.]+)\\s+\"([^\"]+)\"\\s+(.+)$");
+			Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");
 			for (String line;(line = in.readLine()) != null;) {
 				// When we reach an empty line it signifies the end of the scalars
 				if (line.isEmpty())
@@ -78,8 +88,6 @@ public class DataManager {
 				Matcher m = scalarPattern.matcher(line);
 				if (!m.find())
 					continue;
-
-				// TODO: If we can filter which scalars we care about here we will save some memory
 
 				// Record the scalar
 				scalars.put(m.group(2), m.group(3));
@@ -94,7 +102,7 @@ public class DataManager {
 				if (value.matches("^[\\d\\.]+s$"))
 					value = value.substring(0, value.length() - 1);
 
-				// TODO: the headers don't seem to be created properly??
+				// TODO: the headers don't seem to be created properly??cd
 				scalars.put(m.group(1), value);
 			}
 
