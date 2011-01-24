@@ -1,3 +1,4 @@
+import java.awt.Toolkit;
 import java.io.File;
 import java.io.IOException;
 import java.util.LinkedList;
@@ -33,6 +34,7 @@ public class SimulationThread extends Thread {
 
 	@Override
 	public void run() {
+
 		long startTime = System.currentTimeMillis();
 
 		while (true) {
@@ -56,6 +58,7 @@ public class SimulationThread extends Thread {
 				}
 				catch (RuntimeException e) {
 					System.err.println(e.getMessage());
+					Toolkit.getDefaultToolkit().beep();
 
 					// Something went wrong, mark as failed
 					System.out.println(this + " failed " + simulation + ".");
@@ -87,16 +90,7 @@ public class SimulationThread extends Thread {
 	}
 
 	@Override
-	public boolean equals(Object o) {
-		if (!(o instanceof SimulationThread))
-			return false;
-
-		SimulationThread thread = (SimulationThread) o;
-		return this.getId() == thread.getId();
-	}
-
-	@Override
 	public String toString() {
-		return "SimulationThread(id = " + super.getId() + "; remaining = " + runs.size() + "; completed = " + completed.size() + "; failed = " + failed.size() + ";)";
+		return "SimulationThread(" + super.getId() + ")";
 	}
 }

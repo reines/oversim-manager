@@ -97,10 +97,16 @@ public class Manager extends DataManager {
 	protected final File logDir;
 	protected final Map<String, String> parameters;
 	protected final List<SimulationThread> threads;
+	protected final Queue<SimulationRun> completed;
+	protected final Queue<SimulationRun> failed;
+	protected final String configName;
+	protected long startTime;
 	protected boolean finished;
 
 	public Manager(Configuration config, String configName) throws IOException {
 		super (config);
+
+		this.configName = configName;
 
 		// Count how many available cores we should use (max)
 		int maxThreads = Runtime.getRuntime().availableProcessors();
@@ -125,6 +131,9 @@ public class Manager extends DataManager {
 		// Set the working directory and config file
 		workingDir = new File(config.getString("simulation.working-dir", "."));
 		String configFile = config.getString("simulation.config-file", "omnetpp.ini");
+
+		completed = new LinkedList<SimulationRun>();
+		failed = new LinkedList<SimulationRun>();
 
 		finished = false;
 
@@ -156,7 +165,7 @@ public class Manager extends DataManager {
 		threads = new ArrayList<SimulationThread>(maxThreads);
 
 		// Calculate how many runs we should do per thread
-		int perThread = (int) Math.ceil((double)totalRunCount / (double)maxThreads);
+		int perThread = (int) Math.floor((double)totalRunCount / (double)maxThreads);
 		List<SimulationRun> totalRuns = new ArrayList<SimulationRun>(totalRunCount);
 
 		// Create the list of simulation runs
@@ -168,18 +177,19 @@ public class Manager extends DataManager {
 		// Shuffle the list so that we don't end up with all similar runs in the same thread
 		Collections.shuffle(totalRuns);
 
-		for (int i = 0;i < maxThreads;i++)
-		{
-			int runCount = perThread > totalRuns.size() ? totalRuns.size() : perThread; // Check how many to delegate
-
+		for (int i = 0;i < maxThreads;i++) {
 			SimulationThread thread = new SimulationThread(this, workingDir, parameters, overSim);
 
 			// Add runs to be handled by this thread
-			for (int j = 0;j < runCount;j++)
+			for (int j = 0;j < perThread;j++)
 				thread.queue(totalRuns.remove(0));
 
 			threads.add(thread);
 		}
+
+		// Put the remaining runs onto threads as well
+		for (int i = 0;!totalRuns.isEmpty();i++)
+			threads.get(i).queue(totalRuns.remove(0));
 
 		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
 		System.out.println("-------------------------------------");
@@ -220,6 +230,11 @@ public class Manager extends DataManager {
 	}
 
 	public synchronized void start() throws InterruptedException, IOException {
+		if (startTime > 0)
+			throw new RuntimeException("This manager has already been started.");
+
+		startTime = System.currentTimeMillis();
+
 		// Start all our threads
 		for (SimulationThread thread : threads)
 			thread.start();
@@ -248,13 +263,21 @@ public class Manager extends DataManager {
 		Process process = new ProcessBuilder(command).directory(resultRootDir).start();
 		process.waitFor();
 
+		// Display a summary
 		System.out.println("-------------------------------------");
-		System.out.println("Data compression completed, terminating.");
+		System.out.println("Config name: " + configName);
+		System.out.println("Completed runs: " + completed.size());
+		System.out.println("Failed runs: " + failed.size());
+		System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
+		System.out.println("-------------------------------------");
 	}
 
 	public synchronized void notifyCompletion(SimulationThread thread, long duration, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
-		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
 		threads.remove(thread);
+
+		// Note the completed and failed runs
+		this.completed.addAll(completed);
+		this.failed.addAll(failed);
 
 		// This was the final thread, so notify the main thread
 		if (threads.isEmpty()) {
