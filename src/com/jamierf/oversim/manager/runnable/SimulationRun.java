@@ -12,32 +12,24 @@ import java.util.Map;
 
 import org.apache.commons.lang.time.DurationFormatUtils;
 
+import com.jamierf.oversim.manager.SimulationConfig;
+
 public class SimulationRun implements Runnable {
 
-	protected final String configFile;
-	protected final String configName;
 	protected final int runId;
-	protected final File logDir;
 	protected final File workingDir;
-	protected final Map<String, String> parameters;
 	protected final File overSim;
+	protected final SimulationConfig config;
 
-	public SimulationRun(String configFile, String configName, int runId, File logDir, File workingDir, Map<String, String> parameters, File overSim) {
-		this.configFile = configFile;
-		this.configName = configName;
+	public SimulationRun(int runId, File workingDir, File overSim, SimulationConfig config) {
 		this.runId = runId;
-		this.logDir = logDir;
 		this.workingDir = workingDir;
-		this.parameters = parameters;
 		this.overSim = overSim;
+		this.config = config;
 	}
 
-	public String getConfigFile() {
-		return configFile;
-	}
-
-	public String getConfigName() {
-		return configName;
+	public SimulationConfig getConfig() {
+		return config;
 	}
 
 	public int getRunId() {
@@ -50,13 +42,13 @@ public class SimulationRun implements Runnable {
 			List<String> command = new LinkedList<String>();
 
 			command.add(overSim.getAbsolutePath());
-			command.add("-f" + configFile);
-			command.add("-c" + configName);
+			command.add("-f" + config.getFile());
+			command.add("-c" + config.getName());
 			command.add("-uCmdenv");
 			command.add("-r" + runId);
 
 			// Append any special parameters
-			for (Map.Entry<String, String> entry : parameters.entrySet())
+			for (Map.Entry<String, String> entry : config.getParameters().entrySet())
 				command.add("--" + entry.getKey() + "=" + entry.getValue());
 
 			// Execute OverSim
@@ -69,8 +61,8 @@ public class SimulationRun implements Runnable {
 			Process process = processBuilder.start();
 
 			// If we have a log directory then lets save a log
-			if (logDir != null) {
-				File logFile = new File(logDir, "run" + runId + ".log");
+			if (config.getLogDir() != null) {
+				File logFile = new File(config.getLogDir(), "run" + runId + ".log");
 
 				BufferedReader in = null;
 				PrintWriter out = null;
@@ -110,6 +102,6 @@ public class SimulationRun implements Runnable {
 
 	@Override
 	public String toString() {
-		return "SimulationRun(name = '" + configName + "'; id = " + runId + ";)";
+		return "SimulationRun(name = '" + config.getName() + "'; id = " + runId + ";)";
 	}
 }

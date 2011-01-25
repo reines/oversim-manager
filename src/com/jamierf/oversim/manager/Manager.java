@@ -29,20 +29,21 @@ public class Manager extends DataManager {
 
 	public static final void main(String[] args) {
 		try {
-			if (args.length != 1) {
-				System.err.println("Usage: java Manager <config name>");
+			if (args.length < 1) {
+				System.err.println("Must provide at least 1 config to run.");
 				System.exit(1);
 			}
-
-			// Read the config name from command line arguments
-			String configName = args[0];
 
 			// Load the config file
 			PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
 
 			// TODO: Setup defaults/check for missing
 
-			Manager manager = new Manager(config, configName);
+			Manager manager = new Manager(config);
+
+			for (String configName : args)
+				manager.addConfig(configName);
+
 			manager.start();
 		}
 		catch (IOException e) {
@@ -99,21 +100,18 @@ public class Manager extends DataManager {
 	protected final File overSim;
 	protected final File workingDir;
 	protected final File resultRootDir;
-	protected final File resultDir;
-	protected final File logDir;
-	protected final Map<String, String> parameters;
-	protected final Queue<Runnable> queue;
+	protected final String configFile;
+	protected final List<SimulationConfig> configs;
+	protected final Map<String, String> globalParameters;
 	protected final List<SimulationThread> threads;
+	protected final Queue<Runnable> queue;
 	protected final Queue<SimulationRun> completed;
 	protected final Queue<SimulationRun> failed;
-	protected final String configName;
 	protected final String[] wantedScalars;
 	protected long startTime;
 	protected boolean finished;
 
-	public Manager(Configuration config, String configName) throws IOException {
-		this.configName = configName;
-
+	public Manager(Configuration config) throws IOException {
 		// Count how many available cores we should use (max)
 		int maxThreads = Runtime.getRuntime().availableProcessors();
 		if (config.containsKey("simulation.max-threads")) {
@@ -129,70 +127,62 @@ public class Manager extends DataManager {
 			}
 		}
 
+		configs = new LinkedList<SimulationConfig>();
+
 		// Fetch a list of scalars that we care about, then quote them so they are usable inside a regex
 		wantedScalars = config.getStringArray("data.scalar");
 		for (int i = 0;i < wantedScalars.length;i++)
 			wantedScalars[i] = Pattern.quote(wantedScalars[i]);
 
-		// Create a map to hold overriding OverSim parameters
-		parameters = new HashMap<String, String>();
-
 		// TODO: Load in any override parameters
+		globalParameters = new HashMap<String, String>();
 
 		// Set the working directory and config file
 		workingDir = new File(config.getString("simulation.working-dir", "."));
-		String configFile = config.getString("simulation.config-file", "omnetpp.ini");
+		configFile = config.getString("simulation.config-file", "omnetpp.ini");
 
 		completed = new LinkedList<SimulationRun>();
 		failed = new LinkedList<SimulationRun>();
 
 		finished = false;
 
-		resultRootDir = new File(workingDir, parameters.containsKey("result-dir") ? parameters.get("result-dir") : "results");
+		resultRootDir = new File(workingDir, globalParameters.containsKey("result-dir") ? globalParameters.get("result-dir") : "results");
 		if (!resultRootDir.isDirectory())
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getAbsolutePath());
-
-		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
-		if (!resultDir.mkdir())
-			throw new RuntimeException("Unable to create result subdirectory.");
-
-		parameters.put("result-dir", resultDir.getAbsolutePath());
-
-		logDir = new File(resultDir, "logs");
-		if (!logDir.mkdir())
-			throw new RuntimeException("Unable to create logs subdirectory.");
 
 		// Find OverSim - attempt to use the RELEASE version by default
 		overSim = Manager.findOverSim(workingDir);
 
-		int totalRunCount = this.countRuns(configFile, configName); // Fetch the total run count
-		if (totalRunCount == 0)
-			throw new RuntimeException("Invalid config name, 0 runs found.");
-
-		// Check we don't have more threads than we need
-		if (maxThreads > totalRunCount)
-			maxThreads = totalRunCount;
-
 		threads = new ArrayList<SimulationThread>(maxThreads);
 		queue = new LinkedList<Runnable>();
 
-		// Create the queue of simulation runs
-		for (int i = 0;i < totalRunCount;i++) {
-			SimulationRun run = new SimulationRun(configFile, configName, i, logDir, workingDir, parameters, overSim);
-			queue.add(run);
-		}
-
-		for (int i = 0;i < maxThreads;i++)
-		{
+		// Create threads
+		for (int i = 0;i < maxThreads;i++) {
 			SimulationThread thread = new SimulationThread(this);
 			threads.add(thread);
 		}
 
-		System.out.println("Initialized " + threads.size() + " threads, for a total of " + totalRunCount + " runs.");
-		System.out.println("-------------------------------------");
+		System.out.println("Initialized " + threads.size() + " threads.");
 	}
 
-	public int countRuns(String configFile, String configName) throws IOException
+	public synchronized void addConfig(String configName) throws IOException {
+		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters);
+
+		int totalRunCount = this.countRuns(configName); // Fetch the total run count
+		if (totalRunCount == 0)
+			throw new RuntimeException("Invalid config name, 0 runs found.");
+
+		// Create the queue of simulation runs
+		for (int i = 0;i < totalRunCount;i++) {
+			SimulationRun run = new SimulationRun(i, workingDir, overSim, config);
+			queue.add(run);
+		}
+
+		System.out.println("Added configuration: " + config);
+		configs.add(config);
+	}
+
+	protected int countRuns(String configName) throws IOException
 	{
 		List<String> command = new LinkedList<String>();
 
@@ -230,6 +220,9 @@ public class Manager extends DataManager {
 		if (startTime > 0)
 			throw new RuntimeException("This manager has already been started.");
 
+		if (queue.isEmpty())
+			throw new RuntimeException("Queue is empty, nothing to do.");
+
 		startTime = System.currentTimeMillis();
 
 		// Start all our threads
@@ -239,42 +232,42 @@ public class Manager extends DataManager {
 		while (!finished)
 			this.wait();
 
-		// All child threads have now finished, so lets process the data
-		System.out.println("-------------------------------------");
+		for (SimulationConfig config : configs) {
+			// All child threads have now finished, so lets process the data
+			System.out.println("-------------------------------------");
 
-		// If we have any data, output a CSV of it
-		if (super.hasData()) {
-			System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
+			// If we have any data, output a CSV of it
+			if (super.hasData()) {
+				System.out.println("Creating CSV file at: " + config.getResultDir().getName() + ".csv");
 
-			// Save the collated data to a CSV file
-			super.writeCSV(new File(resultRootDir, resultDir.getName() + ".csv"));
-		}
+				// Save the collated data to a CSV file
+				super.writeCSV(new File(resultRootDir, config.getResultDir().getName() + ".csv"));
+			}
 
-		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
+			System.out.println("Compressing raw data to: " + config.getResultDir().getName() + ".tar.gz");
 
-		// Save the raw results into an archive
-		List<String> command = new LinkedList<String>();
+			// Save the raw results into an archive
+			List<String> command = new LinkedList<String>();
 
-		command.add("tar");
-		command.add("-czf");
-		command.add(resultDir.getName() + ".tar.gz");
-		command.add(resultDir.getName());
+			command.add("tar");
+			command.add("-czf");
+			command.add(config.getResultDir().getName() + ".tar.gz");
+			command.add(config.getResultDir().getName());
 
-		Process process = new ProcessBuilder(command).directory(resultRootDir).start();
-		process.waitFor();
+			Process process = new ProcessBuilder(command).directory(resultRootDir).start();
+			process.waitFor();
 
-		// Display a summary
-		System.out.println("-------------------------------------");
-		System.out.println("Config name: " + configName);
-		System.out.println("Completed runs: " + completed.size());
-		System.out.println("Failed runs: " + failed.size());
-		System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
-		System.out.println("-------------------------------------");
+			// Display a summary
+			System.out.println("-------------------------------------");
+			System.out.println("Config: " + config);
+			System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
+			System.out.println("Completed runs: " + completed.size());
+			System.out.println("Failed runs: " + failed.size());
 
-		// We have failed runs, list them
-		if (!failed.isEmpty()) {
-			System.out.println("Failed runs (" + failed.size() + "):");
-			System.out.println(StringUtils.join(failed, ','));
+			// We have failed runs, list them
+			if (!failed.isEmpty())
+				System.out.println(StringUtils.join(failed, ','));
+
 			System.out.println("-------------------------------------");
 		}
 	}
@@ -289,7 +282,7 @@ public class Manager extends DataManager {
 			completed.add(run);
 
 			// Queue a data processing instance for this run
-			SimulationData data = new SimulationData(this, resultDir, run.getConfigName(), run.getRunId(), wantedScalars);
+			SimulationData data = new SimulationData(this, run.getRunId(), wantedScalars, run.getConfig());
 			queue.add(data);
 		}
 	}

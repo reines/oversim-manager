@@ -15,29 +15,32 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang.StringUtils;
 
 import com.jamierf.oversim.manager.Manager;
+import com.jamierf.oversim.manager.SimulationConfig;
 
 public class SimulationData implements Runnable {
 
 	protected final Manager manager;
-	protected final File resultDir;
-	protected final String configName;
 	protected final int runId;
 	protected final String[] wantedScalars;
+	protected final SimulationConfig config;
 
-	public SimulationData(Manager manager, File resultDir, String configName, int runId, String[] wantedScalars) {
+	public SimulationData(Manager manager, int runId, String[] wantedScalars, SimulationConfig config) {
 		this.manager = manager;
-		this.resultDir = resultDir;
-		this.configName = configName;
 		this.runId = runId;
 		this.wantedScalars = wantedScalars;
+		this.config = config;
+	}
+
+	public SimulationConfig getConfig() {
+		return config;
 	}
 
 	@Override
 	public void run() {
 		try {
-			File sca = new File(resultDir, configName + "-" + runId + ".sca");
+			File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
 			if (!sca.exists())
-				throw new FileNotFoundException("Unable to find scalar results for: " + configName + "(" + runId + ")");
+				throw new FileNotFoundException("Unable to find scalar results for: " + config.getName() + "(" + runId + ")");
 
 			Map<String, String> attributes = new HashMap<String, String>();
 			SortedMap<String, String> scalars = new TreeMap<String, String>();
@@ -111,6 +114,6 @@ public class SimulationData implements Runnable {
 
 	@Override
 	public String toString() {
-		return "SimulationData(name = '" + configName + "'; id = " + runId + ";)";
+		return "SimulationData(name = '" + config.getName() + "'; id = " + runId + ";)";
 	}
 }
