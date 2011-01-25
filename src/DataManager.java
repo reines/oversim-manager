@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.lang.StringUtils;
 
+import runnable.SimulationRun;
+
 public class DataManager {
 
 	protected final Configuration config;

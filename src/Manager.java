@@ -4,7 +4,6 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -19,6 +18,8 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.time.DurationFormatUtils;
+
+import runnable.SimulationRun;
 
 public class Manager extends DataManager {
 
@@ -96,6 +97,7 @@ public class Manager extends DataManager {
 	protected final File resultRootDir;
 	protected final File logDir;
 	protected final Map<String, String> parameters;
+	protected final Queue<Runnable> queue;
 	protected final List<SimulationThread> threads;
 	protected boolean finished;
 
@@ -154,34 +156,21 @@ public class Manager extends DataManager {
 			maxThreads = totalRunCount;
 
 		threads = new ArrayList<SimulationThread>(maxThreads);
+		queue = new LinkedList<Runnable>();
 
-		// Calculate how many runs we should do per thread
-		int perThread = (int) Math.ceil((double)totalRunCount / (double)maxThreads);
-		List<SimulationRun> totalRuns = new ArrayList<SimulationRun>(totalRunCount);
-
-		// Create the list of simulation runs
+		// Create the queue of simulation runs
 		for (int i = 0;i < totalRunCount;i++) {
-			SimulationRun run = new SimulationRun(configFile, configName, i, logDir);
-			totalRuns.add(run);
+			SimulationRun run = new SimulationRun(configFile, configName, i, logDir, workingDir, parameters, overSim);
+			queue.add(run);
 		}
-
-		// Shuffle the list so that we don't end up with all similar runs in the same thread
-		Collections.shuffle(totalRuns);
 
 		for (int i = 0;i < maxThreads;i++)
 		{
-			int runCount = perThread > totalRuns.size() ? totalRuns.size() : perThread; // Check how many to delegate
-
-			SimulationThread thread = new SimulationThread(this, workingDir, parameters, overSim);
-
-			// Add runs to be handled by this thread
-			for (int j = 0;j < runCount;j++)
-				thread.queue(totalRuns.remove(0));
-
+			SimulationThread thread = new SimulationThread(this);
 			threads.add(thread);
 		}
 
-		System.out.println("Initialized " + threads.size() + " threads, with a total of " + totalRunCount + " runs.");
+		System.out.println("Initialized " + threads.size() + " threads, for a total of " + totalRunCount + " runs.");
 		System.out.println("-------------------------------------");
 	}
 
@@ -252,7 +241,21 @@ public class Manager extends DataManager {
 		System.out.println("Data compression completed, terminating.");
 	}
 
-	public synchronized void notifyCompletion(SimulationThread thread, long duration, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
+	public synchronized Runnable poll() {
+		return queue.poll();
+	}
+
+	public void completed(Runnable runnable) {
+		if (runnable instanceof SimulationRun) {
+			// TODO: queue a SimilationData instance
+		}
+	}
+
+	public void failed(Runnable runnable) {
+		System.out.println(runnable + " failed!");
+	}
+
+	public synchronized void finished(SimulationThread thread, long duration) {
 		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
 		threads.remove(thread);
 
