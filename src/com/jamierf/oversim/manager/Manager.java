@@ -1,3 +1,5 @@
+package com.jamierf.oversim.manager;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -20,7 +22,8 @@ import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 
-import runnable.SimulationRun;
+import com.jamierf.oversim.manager.runnable.SimulationData;
+import com.jamierf.oversim.manager.runnable.SimulationRun;
 
 public class Manager extends DataManager {
 
@@ -96,6 +99,7 @@ public class Manager extends DataManager {
 	protected final File overSim;
 	protected final File workingDir;
 	protected final File resultRootDir;
+	protected final File resultDir;
 	protected final File logDir;
 	protected final Map<String, String> parameters;
 	protected final Queue<Runnable> queue;
@@ -103,12 +107,11 @@ public class Manager extends DataManager {
 	protected final Queue<SimulationRun> completed;
 	protected final Queue<SimulationRun> failed;
 	protected final String configName;
+	protected final String[] wantedScalars;
 	protected long startTime;
 	protected boolean finished;
 
 	public Manager(Configuration config, String configName) throws IOException {
-		super (config);
-
 		this.configName = configName;
 
 		// Count how many available cores we should use (max)
@@ -125,6 +128,11 @@ public class Manager extends DataManager {
 				throw new RuntimeException("Malformed configuration, max-threads must be an integer!");
 			}
 		}
+
+		// Fetch a list of scalars that we care about, then quote them so they are usable inside a regex
+		wantedScalars = config.getStringArray("data.scalar");
+		for (int i = 0;i < wantedScalars.length;i++)
+			wantedScalars[i] = Pattern.quote(wantedScalars[i]);
 
 		// Create a map to hold overriding OverSim parameters
 		parameters = new HashMap<String, String>();
@@ -144,13 +152,13 @@ public class Manager extends DataManager {
 		if (!resultRootDir.isDirectory())
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getAbsolutePath());
 
-		super.resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
-		if (!super.resultDir.mkdir())
+		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
+		if (!resultDir.mkdir())
 			throw new RuntimeException("Unable to create result subdirectory.");
 
-		parameters.put("result-dir", super.resultDir.getAbsolutePath());
+		parameters.put("result-dir", resultDir.getAbsolutePath());
 
-		logDir = new File(super.resultDir, "logs");
+		logDir = new File(resultDir, "logs");
 		if (!logDir.mkdir())
 			throw new RuntimeException("Unable to create logs subdirectory.");
 
@@ -234,12 +242,15 @@ public class Manager extends DataManager {
 		// All child threads have now finished, so lets process the data
 		System.out.println("-------------------------------------");
 
-		System.out.println("Creating CSV file at: " + super.resultDir.getName() + ".csv");
+		// If we have any data, output a CSV of it
+		if (super.hasData()) {
+			System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
 
-		// Save the collated data to a CSV file
-		super.writeCSV(new File(resultRootDir, super.resultDir.getName() + ".csv"));
+			// Save the collated data to a CSV file
+			super.writeCSV(new File(resultRootDir, resultDir.getName() + ".csv"));
+		}
 
-		System.out.println("Compressing raw data to: " + super.resultDir.getName() + ".tar.gz");
+		System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
 
 		// Save the raw results into an archive
 		List<String> command = new LinkedList<String>();
@@ -277,7 +288,9 @@ public class Manager extends DataManager {
 			SimulationRun run = (SimulationRun) runnable;
 			completed.add(run);
 
-			// TODO: queue a SimilationData instance
+			// Queue a data processing instance for this run
+			SimulationData data = new SimulationData(this, resultDir, run.getConfigName(), run.getRunId(), wantedScalars);
+			queue.add(data);
 		}
 	}
 
@@ -289,7 +302,7 @@ public class Manager extends DataManager {
 	}
 
 	public synchronized void finished(SimulationThread thread, long duration) {
-		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
+		System.out.println(thread + " completed all tasks in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
 
 		threads.remove(thread);
 

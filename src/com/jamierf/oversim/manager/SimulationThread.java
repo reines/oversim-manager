@@ -1,3 +1,4 @@
+package com.jamierf.oversim.manager;
 
 public class SimulationThread extends Thread {
 
