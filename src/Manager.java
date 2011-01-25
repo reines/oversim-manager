@@ -18,6 +18,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 
 public class Manager extends DataManager {
@@ -270,6 +271,13 @@ public class Manager extends DataManager {
 		System.out.println("Failed runs: " + failed.size());
 		System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
 		System.out.println("-------------------------------------");
+
+		// We have failed runs, list them
+		if (!failed.isEmpty()) {
+			System.out.println("Failed runs (" + failed.size() + "):");
+			System.out.println(StringUtils.join(failed, ','));
+			System.out.println("-------------------------------------");
+		}
 	}
 
 	public synchronized void notifyCompletion(SimulationThread thread, long duration, Queue<SimulationRun> completed, Queue<SimulationRun> failed) {
