@@ -17,6 +17,7 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 
 import runnable.SimulationRun;
@@ -99,10 +100,16 @@ public class Manager extends DataManager {
 	protected final Map<String, String> parameters;
 	protected final Queue<Runnable> queue;
 	protected final List<SimulationThread> threads;
+	protected final Queue<SimulationRun> completed;
+	protected final Queue<SimulationRun> failed;
+	protected final String configName;
+	protected long startTime;
 	protected boolean finished;
 
 	public Manager(Configuration config, String configName) throws IOException {
 		super (config);
+
+		this.configName = configName;
 
 		// Count how many available cores we should use (max)
 		int maxThreads = Runtime.getRuntime().availableProcessors();
@@ -127,6 +134,9 @@ public class Manager extends DataManager {
 		// Set the working directory and config file
 		workingDir = new File(config.getString("simulation.working-dir", "."));
 		String configFile = config.getString("simulation.config-file", "omnetpp.ini");
+
+		completed = new LinkedList<SimulationRun>();
+		failed = new LinkedList<SimulationRun>();
 
 		finished = false;
 
@@ -209,6 +219,11 @@ public class Manager extends DataManager {
 	}
 
 	public synchronized void start() throws InterruptedException, IOException {
+		if (startTime > 0)
+			throw new RuntimeException("This manager has already been started.");
+
+		startTime = System.currentTimeMillis();
+
 		// Start all our threads
 		for (SimulationThread thread : threads)
 			thread.start();
@@ -237,26 +252,45 @@ public class Manager extends DataManager {
 		Process process = new ProcessBuilder(command).directory(resultRootDir).start();
 		process.waitFor();
 
+		// Display a summary
 		System.out.println("-------------------------------------");
-		System.out.println("Data compression completed, terminating.");
+		System.out.println("Config name: " + configName);
+		System.out.println("Completed runs: " + completed.size());
+		System.out.println("Failed runs: " + failed.size());
+		System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
+		System.out.println("-------------------------------------");
+
+		// We have failed runs, list them
+		if (!failed.isEmpty()) {
+			System.out.println("Failed runs (" + failed.size() + "):");
+			System.out.println(StringUtils.join(failed, ','));
+			System.out.println("-------------------------------------");
+		}
 	}
 
 	public synchronized Runnable poll() {
 		return queue.poll();
 	}
 
-	public void completed(Runnable runnable) {
+	public synchronized void completed(Runnable runnable) {
 		if (runnable instanceof SimulationRun) {
+			SimulationRun run = (SimulationRun) runnable;
+			completed.add(run);
+
 			// TODO: queue a SimilationData instance
 		}
 	}
 
-	public void failed(Runnable runnable) {
+	public synchronized void failed(Runnable runnable) {
 		System.out.println(runnable + " failed!");
+
+		if (runnable instanceof SimulationRun)
+			failed.add((SimulationRun) runnable);
 	}
 
 	public synchronized void finished(SimulationThread thread, long duration) {
 		System.out.println(thread + " completed all simulations in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
+
 		threads.remove(thread);
 
 		// This was the final thread, so notify the main thread

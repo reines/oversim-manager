@@ -9,6 +9,7 @@ public class SimulationThread extends Thread {
 
 	@Override
 	public void run() {
+
 		long startTime = System.currentTimeMillis();
 
 		while (true) {
@@ -41,6 +42,6 @@ public class SimulationThread extends Thread {
 
 	@Override
 	public String toString() {
-		return "SimulationThread(id = " + super.getId() + ")";
+		return "SimulationThread(" + super.getId() + ")";
 	}
 }
