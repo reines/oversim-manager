@@ -25,7 +25,7 @@ import org.apache.commons.lang.time.DurationFormatUtils;
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
 
-public class Manager extends DataManager {
+public class Manager {
 
 	public static final void main(String[] args) {
 		try {
@@ -237,11 +237,11 @@ public class Manager extends DataManager {
 			System.out.println("-------------------------------------");
 
 			// If we have any data, output a CSV of it
-			if (super.hasData()) {
+			if (config.hasData()) {
 				System.out.println("Creating CSV file at: " + config.getResultDir().getName() + ".csv");
 
 				// Save the collated data to a CSV file
-				super.writeCSV(new File(resultRootDir, config.getResultDir().getName() + ".csv"));
+				config.writeCSV(new File(resultRootDir, config.getResultDir().getName() + ".csv"));
 			}
 
 			System.out.println("Compressing raw data to: " + config.getResultDir().getName() + ".tar.gz");
@@ -282,7 +282,7 @@ public class Manager extends DataManager {
 			completed.add(run);
 
 			// Queue a data processing instance for this run
-			SimulationData data = new SimulationData(this, run.getRunId(), wantedScalars, run.getConfig());
+			SimulationData data = new SimulationData(run.getRunId(), wantedScalars, run.getConfig());
 			queue.add(data);
 		}
 	}

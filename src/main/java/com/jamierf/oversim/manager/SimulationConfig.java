@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
-public class SimulationConfig {
+public class SimulationConfig extends DataSet {
 
 	protected final String configFile;
 	protected final String configName;

@@ -13,12 +13,12 @@ import java.util.TreeSet;
 
 import org.apache.commons.lang.StringUtils;
 
-public class DataManager {
+public class DataSet {
 
 	protected final SortedSet<String> headers;
 	protected final Map<String, Queue<String[]>> data;
 
-	public DataManager() {
+	public DataSet() {
 		headers = new TreeSet<String>();
 		data = new HashMap<String, Queue<String[]>>();
 	}

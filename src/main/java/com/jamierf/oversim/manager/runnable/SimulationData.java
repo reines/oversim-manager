@@ -14,18 +14,15 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 
-import com.jamierf.oversim.manager.Manager;
 import com.jamierf.oversim.manager.SimulationConfig;
 
 public class SimulationData implements Runnable {
 
-	protected final Manager manager;
 	protected final int runId;
 	protected final String[] wantedScalars;
 	protected final SimulationConfig config;
 
-	public SimulationData(Manager manager, int runId, String[] wantedScalars, SimulationConfig config) {
-		this.manager = manager;
+	public SimulationData(int runId, String[] wantedScalars, SimulationConfig config) {
 		this.runId = runId;
 		this.wantedScalars = wantedScalars;
 		this.config = config;
@@ -35,6 +32,7 @@ public class SimulationData implements Runnable {
 		return config;
 	}
 
+	@Override
 	public void run() {
 		try {
 			File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
@@ -102,8 +100,8 @@ public class SimulationData implements Runnable {
 					in.close();
 			}
 
-			// Hand the data back to the manager, using the iterationvars as a unique identifier so that all repetitions are grouped together
-			manager.mergeData(attributes.get("iterationvars"), scalars);
+			// Hand the data back to the config, using the iterationvars as a unique identifier so that all repetitions are grouped together
+			config.mergeData(attributes.get("iterationvars"), scalars);
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block
