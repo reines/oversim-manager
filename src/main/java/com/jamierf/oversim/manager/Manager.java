@@ -179,6 +179,8 @@ public class Manager {
 		}
 
 		System.out.println("Added configuration: " + config);
+		System.out.println("with result dir: " + config.getResultDir().getAbsolutePath());
+
 		configs.add(config);
 	}
 

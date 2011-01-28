@@ -32,7 +32,6 @@ public class SimulationData implements Runnable {
 		return config;
 	}
 
-	@Override
 	public void run() {
 		try {
 			File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
