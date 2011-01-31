@@ -10,8 +10,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.lang.time.DurationFormatUtils;
-
 import com.jamierf.oversim.manager.SimulationConfig;
 
 public class SimulationRun implements Runnable {
@@ -36,6 +34,7 @@ public class SimulationRun implements Runnable {
 		return runId;
 	}
 
+	@Override
 	public void run() {
 		try {
 			List<String> command = new LinkedList<String>();
@@ -54,8 +53,6 @@ public class SimulationRun implements Runnable {
 			ProcessBuilder processBuilder = new ProcessBuilder(command);
 			processBuilder.directory(workingDir);
 			processBuilder.redirectErrorStream(true);
-
-			long startTime = System.currentTimeMillis();
 
 			Process process = processBuilder.start();
 
@@ -86,8 +83,6 @@ public class SimulationRun implements Runnable {
 			int result = process.waitFor();
 			if (result != 0)
 				throw new RuntimeException("OverSim run " + runId + " exited with result code: " + result);
-
-			System.out.println(this + " completed in " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true) + ".");
 		}
 		catch (IOException e) {
 			// TODO Auto-generated catch block

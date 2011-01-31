@@ -297,8 +297,6 @@ public class Manager {
 	}
 
 	public synchronized void finished(SimulationThread thread, long duration) {
-		System.out.println(thread + " completed all tasks in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ", terminating.");
-
 		threads.remove(thread);
 
 		// This was the final thread, so notify the main thread

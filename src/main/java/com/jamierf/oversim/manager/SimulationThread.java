@@ -1,5 +1,7 @@
 package com.jamierf.oversim.manager;
 
+import org.apache.commons.lang.time.DurationFormatUtils;
+
 public class SimulationThread extends Thread {
 
 	protected final Manager manager;
@@ -24,17 +26,21 @@ public class SimulationThread extends Thread {
 				break;
 
 			try {
+				long runStartTime = System.currentTimeMillis();
+
 				System.out.println(this + " starting " + runnable + ".");
 				runnable.run();
 
 				// Mark this simulation as completed
 				manager.completed(runnable);
+				System.out.println(this + " completed " + runnable + " in " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - runStartTime, true, true) + ".");
 			}
 			catch (RuntimeException e) {
 				System.err.println(e.getMessage());
 
 				// Something went wrong, mark as failed
 				manager.failed(runnable);
+				System.out.println(this + " failed " + runnable);
 			}
 		}
 
