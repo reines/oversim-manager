@@ -39,7 +39,7 @@ public class SimulationRun implements Runnable {
 		try {
 			List<String> command = new LinkedList<String>();
 
-			command.add(overSim.getAbsolutePath());
+			command.add(overSim.getCanonicalPath());
 			command.add("-f" + config.getFile());
 			command.add("-c" + config.getName());
 			command.add("-uCmdenv");

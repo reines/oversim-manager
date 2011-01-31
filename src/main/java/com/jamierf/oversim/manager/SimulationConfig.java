@@ -1,6 +1,7 @@
 package com.jamierf.oversim.manager;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -12,7 +13,7 @@ public class SimulationConfig extends DataSet {
 	protected final File logDir;
 	protected final Map<String, String> parameters;
 
-	public SimulationConfig(String configFile, String configName, File resultRootDir, Map<String, String> globalParameters) {
+	public SimulationConfig(String configFile, String configName, File resultRootDir, Map<String, String> globalParameters) throws IOException {
 		this.configFile = configFile;
 		this.configName = configName;
 
@@ -29,7 +30,7 @@ public class SimulationConfig extends DataSet {
 		parameters.putAll(globalParameters);
 
 		// Add our new result directory as an override parameter
-		parameters.put("result-dir", resultDir.getAbsolutePath());
+		parameters.put("result-dir", resultDir.getCanonicalPath());
 	}
 
 	public String getFile() {

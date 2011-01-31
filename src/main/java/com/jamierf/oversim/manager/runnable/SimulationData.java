@@ -32,6 +32,7 @@ public class SimulationData implements Runnable {
 		return config;
 	}
 
+	@Override
 	public void run() {
 		try {
 			File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
@@ -70,7 +71,7 @@ public class SimulationData implements Runnable {
 
 				// Confirm we have iterationvars, otherwise we don't have anything to use as a unique identifier
 				if (!attributes.containsKey("iterationvars"))
-					throw new RuntimeException("Malformed scalar file, no iterationvars found: " + sca.getAbsolutePath());
+					throw new RuntimeException("Malformed scalar file, no iterationvars found: " + sca.getCanonicalPath());
 
 				// Read the scalars
 				Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");

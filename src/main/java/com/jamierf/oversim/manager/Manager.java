@@ -148,7 +148,7 @@ public class Manager {
 
 		resultRootDir = new File(workingDir, globalParameters.containsKey("result-dir") ? globalParameters.get("result-dir") : "results");
 		if (!resultRootDir.isDirectory())
-			throw new RuntimeException("Invalid result directory: " + resultRootDir.getAbsolutePath());
+			throw new RuntimeException("Invalid result directory: " + resultRootDir.getCanonicalPath());
 
 		// Find OverSim - attempt to use the RELEASE version by default
 		overSim = Manager.findOverSim(workingDir);
@@ -179,7 +179,7 @@ public class Manager {
 		}
 
 		System.out.println("Added configuration: " + config);
-		System.out.println("with result dir: " + config.getResultDir().getAbsolutePath());
+		System.out.println("with result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
 	}
@@ -188,7 +188,7 @@ public class Manager {
 	{
 		List<String> command = new LinkedList<String>();
 
-		command.add(overSim.getAbsolutePath());
+		command.add(overSim.getCanonicalPath());
 		command.add("-f" + configFile);
 		command.add("-x" + configName);
 
