@@ -178,8 +178,8 @@ public class Manager {
 			queue.add(run);
 		}
 
-		System.out.println("Added configuration: " + config);
-		System.out.println("with result dir: " + config.getResultDir().getCanonicalPath());
+		System.out.println("Added configuration: " + config + " with " + totalRunCount + " runs.");
+		System.out.println("Result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
 	}
