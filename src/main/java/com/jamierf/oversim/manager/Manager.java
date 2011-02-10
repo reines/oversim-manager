@@ -279,6 +279,9 @@ public class Manager {
 	}
 
 	public synchronized Runnable poll() {
+		if (queue.isEmpty())
+			return null;
+
 		return queue.remove(0);
 	}
 
