@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -104,7 +105,7 @@ public class Manager {
 	protected final List<SimulationConfig> configs;
 	protected final Map<String, String> globalParameters;
 	protected final List<SimulationThread> threads;
-	protected final Queue<Runnable> queue;
+	protected final List<Runnable> queue;
 	protected final Queue<SimulationRun> completed;
 	protected final Queue<SimulationRun> failed;
 	protected final String[] wantedScalars;
@@ -154,7 +155,7 @@ public class Manager {
 		overSim = Manager.findOverSim(workingDir);
 
 		threads = new ArrayList<SimulationThread>(maxThreads);
-		queue = new LinkedList<Runnable>();
+		queue = new ArrayList<Runnable>();
 
 		// Create threads
 		for (int i = 0;i < maxThreads;i++) {
@@ -178,7 +179,10 @@ public class Manager {
 			queue.add(run);
 		}
 
-		System.out.println("Added configuration: " + config + " with " + totalRunCount + " runs.");
+		// Shuffle the queue to help prevent bunching of memory intensive configurations
+		Collections.shuffle(queue);
+
+		System.out.println("Added configuration: " + config + " with " + totalRunCount + " runs");
 		System.out.println("Result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
@@ -275,7 +279,10 @@ public class Manager {
 	}
 
 	public synchronized Runnable poll() {
-		return queue.poll();
+		if (queue.isEmpty())
+			return null;
+
+		return queue.remove(0);
 	}
 
 	public synchronized void completed(Runnable runnable) {
