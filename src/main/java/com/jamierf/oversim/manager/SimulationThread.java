@@ -10,15 +10,16 @@ public class SimulationThread extends Thread {
 		this.manager = manager;
 	}
 
-	@Override
 	public void run() {
-
-		long startTime = System.currentTimeMillis();
-
 		while (true) {
 			Runnable runnable = null;
-			synchronized (this) {
+
+			try {
 				runnable = manager.poll();
+			}
+			catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
 			}
 
 			// The queue is empty, this thread is now finished
@@ -32,19 +33,17 @@ public class SimulationThread extends Thread {
 				runnable.run();
 
 				// Mark this simulation as completed
-				manager.completed(runnable);
 				System.out.println(this + " completed " + runnable + " in " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - runStartTime, true, true) + ".");
+				manager.completed(runnable);
 			}
-			catch (RuntimeException e) {
+			catch (Exception e) {
 				System.err.println(e.getMessage());
 
 				// Something went wrong, mark as failed
-				manager.failed(runnable);
 				System.out.println(this + " failed " + runnable);
+				manager.failed(runnable);
 			}
 		}
-
-		manager.finished(this, System.currentTimeMillis() - startTime);
 	}
 
 	@Override

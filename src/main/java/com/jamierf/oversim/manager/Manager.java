@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -20,8 +19,6 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DurationFormatUtils;
 
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
@@ -106,11 +103,10 @@ public class Manager {
 	protected final Map<String, String> globalParameters;
 	protected final List<SimulationThread> threads;
 	protected final List<Runnable> queue;
-	protected final Queue<SimulationRun> completed;
-	protected final Queue<SimulationRun> failed;
 	protected final String[] wantedScalars;
 	protected long startTime;
 	protected boolean finished;
+	protected int pendingRuns;
 
 	public Manager(Configuration config) throws IOException {
 		// Count how many available cores we should use (max)
@@ -142,9 +138,6 @@ public class Manager {
 		workingDir = new File(config.getString("simulation.working-dir", "."));
 		configFile = config.getString("simulation.config-file", "omnetpp.ini");
 
-		completed = new LinkedList<SimulationRun>();
-		failed = new LinkedList<SimulationRun>();
-
 		finished = false;
 
 		resultRootDir = new File(workingDir, globalParameters.containsKey("result-dir") ? globalParameters.get("result-dir") : "results");
@@ -157,6 +150,8 @@ public class Manager {
 		threads = new ArrayList<SimulationThread>(maxThreads);
 		queue = new ArrayList<Runnable>();
 
+		pendingRuns = 0;
+
 		// Create threads
 		for (int i = 0;i < maxThreads;i++) {
 			SimulationThread thread = new SimulationThread(this);
@@ -167,11 +162,12 @@ public class Manager {
 	}
 
 	public synchronized void addConfig(String configName) throws IOException {
-		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters);
-
 		int totalRunCount = this.countRuns(configName); // Fetch the total run count
 		if (totalRunCount == 0)
 			throw new RuntimeException("Invalid config name, 0 runs found.");
+
+		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters, totalRunCount);
+		pendingRuns += totalRunCount;
 
 		// Create the queue of simulation runs
 		for (int i = 0;i < totalRunCount;i++) {
@@ -186,6 +182,8 @@ public class Manager {
 		System.out.println("Result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
+
+		this.notifyAll();
 	}
 
 	protected int countRuns(String configName) throws IOException
@@ -222,7 +220,7 @@ public class Manager {
 		return runs;
 	}
 
-	public synchronized void start() throws InterruptedException, IOException {
+	public synchronized void start() throws IOException, InterruptedException {
 		if (startTime > 0)
 			throw new RuntimeException("This manager has already been started.");
 
@@ -238,49 +236,13 @@ public class Manager {
 		while (!finished)
 			this.wait();
 
-		for (SimulationConfig config : configs) {
-			// All child threads have now finished, so lets process the data
-			System.out.println("-------------------------------------");
-
-			// If we have any data, output a CSV of it
-			if (config.hasData()) {
-				System.out.println("Creating CSV file at: " + config.getResultDir().getName() + ".csv");
-
-				// Save the collated data to a CSV file
-				config.writeCSV(new File(resultRootDir, config.getResultDir().getName() + ".csv"));
-			}
-
-			System.out.println("Compressing raw data to: " + config.getResultDir().getName() + ".tar.gz");
-
-			// Save the raw results into an archive
-			List<String> command = new LinkedList<String>();
-
-			command.add("tar");
-			command.add("-czf");
-			command.add(config.getResultDir().getName() + ".tar.gz");
-			command.add(config.getResultDir().getName());
-
-			Process process = new ProcessBuilder(command).directory(resultRootDir).start();
-			process.waitFor();
-
-			// Display a summary
-			System.out.println("-------------------------------------");
-			System.out.println("Config: " + config);
-			System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
-			System.out.println("Completed runs: " + completed.size());
-			System.out.println("Failed runs: " + failed.size());
-
-			// We have failed runs, list them
-			if (!failed.isEmpty())
-				System.out.println(StringUtils.join(failed, ','));
-
-			System.out.println("-------------------------------------");
-		}
+		System.out.println("All runs completed, terminating.");
+		System.exit(0);
 	}
 
-	public synchronized Runnable poll() {
-		if (queue.isEmpty())
-			return null;
+	public synchronized Runnable poll() throws InterruptedException {
+		while (queue.isEmpty())
+			this.wait();
 
 		return queue.remove(0);
 	}
@@ -288,28 +250,74 @@ public class Manager {
 	public synchronized void completed(Runnable runnable) {
 		if (runnable instanceof SimulationRun) {
 			SimulationRun run = (SimulationRun) runnable;
-			completed.add(run);
+			SimulationConfig config = run.getConfig();
+
+			config.pendingRuns--;
+			pendingRuns--;
+
+			config.completedRuns++;
 
 			// Queue a data processing instance for this run
-			SimulationData data = new SimulationData(run.getRunId(), wantedScalars, run.getConfig());
-			queue.add(data);
+			queue.add(new SimulationData(run.getRunId(), wantedScalars, run.getConfig()));
+			this.notifyAll();
+
+			config.pendingRuns++;
+			pendingRuns++;
+		}
+		else if (runnable instanceof SimulationData) {
+			SimulationConfig config = ((SimulationData) runnable).getConfig();
+
+			config.pendingRuns--;
+			pendingRuns--;
+
+			if (config.pendingRuns == 0) {
+				try {
+					config.processData(resultRootDir);
+				}
+				catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		if (pendingRuns == 0) {
+			finished = true;
+			this.notifyAll();
 		}
 	}
 
 	public synchronized void failed(Runnable runnable) {
 		System.out.println(runnable + " failed!");
 
-		if (runnable instanceof SimulationRun)
-			failed.add((SimulationRun) runnable);
-	}
+		if (runnable instanceof SimulationRun) {
+			SimulationConfig config = ((SimulationRun) runnable).getConfig();
 
-	public synchronized void finished(SimulationThread thread, long duration) {
-		threads.remove(thread);
+			config.pendingRuns--;
+			pendingRuns--;
 
-		// This was the final thread, so notify the main thread
-		if (threads.isEmpty()) {
+			config.failedRuns++;
+		}
+		else if (runnable instanceof SimulationData) {
+			SimulationConfig config = ((SimulationData) runnable).getConfig();
+
+			config.pendingRuns--;
+			pendingRuns--;
+
+			if (config.pendingRuns == 0) {
+				try {
+					config.processData(resultRootDir);
+				}
+				catch (IOException e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		if (pendingRuns == 0) {
 			finished = true;
-			this.notify();
+			this.notifyAll();
 		}
 	}
 }
