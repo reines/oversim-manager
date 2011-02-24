@@ -104,6 +104,8 @@ public class Manager {
 	protected final List<SimulationThread> threads;
 	protected final List<Runnable> queue;
 	protected final String[] wantedScalars;
+	protected final boolean compressData;
+	protected final boolean deleteData;
 	protected long startTime;
 	protected boolean finished;
 	protected int pendingRuns;
@@ -137,6 +139,9 @@ public class Manager {
 		// Set the working directory and config file
 		workingDir = new File(config.getString("simulation.working-dir", "."));
 		configFile = config.getString("simulation.config-file", "omnetpp.ini");
+
+		compressData = config.getBoolean("data.compress", false);
+		deleteData = config.getBoolean("data.delete", false);
 
 		finished = false;
 
@@ -248,9 +253,10 @@ public class Manager {
 	}
 
 	public synchronized void completed(Runnable runnable) {
+		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
 			SimulationRun run = (SimulationRun) runnable;
-			SimulationConfig config = run.getConfig();
+			config = run.getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
@@ -265,33 +271,22 @@ public class Manager {
 			pendingRuns++;
 		}
 		else if (runnable instanceof SimulationData) {
-			SimulationConfig config = ((SimulationData) runnable).getConfig();
+			config = ((SimulationData) runnable).getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
-
-			if (config.pendingRuns == 0) {
-				try {
-					config.processData(resultRootDir);
-				}
-				catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
-			}
 		}
 
-		if (pendingRuns == 0) {
-			finished = true;
-			this.notifyAll();
-		}
+		if (config != null)
+			checkForCompletion(config);
 	}
 
 	public synchronized void failed(Runnable runnable) {
 		System.out.println(runnable + " failed!");
 
+		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
-			SimulationConfig config = ((SimulationRun) runnable).getConfig();
+			config = ((SimulationRun) runnable).getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
@@ -299,19 +294,24 @@ public class Manager {
 			config.failedRuns++;
 		}
 		else if (runnable instanceof SimulationData) {
-			SimulationConfig config = ((SimulationData) runnable).getConfig();
+			config = ((SimulationData) runnable).getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
+		}
 
-			if (config.pendingRuns == 0) {
-				try {
-					config.processData(resultRootDir);
-				}
-				catch (IOException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				}
+		if (config != null)
+			checkForCompletion(config);
+	}
+
+	protected synchronized void checkForCompletion(SimulationConfig config) {
+		if (config.pendingRuns == 0) {
+			try {
+				config.processData(resultRootDir, compressData, deleteData);
+			}
+			catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
 		}
 
