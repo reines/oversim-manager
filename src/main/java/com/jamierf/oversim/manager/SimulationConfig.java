@@ -3,12 +3,13 @@ package com.jamierf.oversim.manager;
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
+
+import com.jamierf.oversim.manager.util.DirectoryArchiver;
+
 
 public class SimulationConfig extends DataSet {
 
@@ -70,7 +71,7 @@ public class SimulationConfig extends DataSet {
 		return parameters;
 	}
 
-	public void processData(File resultRootDir, boolean compressData, boolean deleteData) throws IOException {
+	public void processData(File resultRootDir, DirectoryArchiver archiver, boolean deleteData) throws IOException {
 		// Lets process the data
 		System.out.println("-------------------------------------");
 
@@ -83,32 +84,14 @@ public class SimulationConfig extends DataSet {
 		}
 
 		// If we should compress the raw data, do it
-		if (compressData) {
+		if (archiver != null) {
 			System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
-
-			// Save the raw results into an archive
-			List<String> command = new LinkedList<String>();
-
-			command.add("tar");
-			command.add("-czf");
-			command.add(resultDir.getName() + ".tar.gz");
-			command.add(resultDir.getName());
-
-			Process process = new ProcessBuilder(command).directory(resultRootDir).start();
-
-			try {
-				process.waitFor();
-			}
-			catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			archiver.compress(resultDir, new File(resultRootDir, resultDir.getName() + ".tar.gz"));
 		}
 
 		// If we should delete the raw data, do it
 		if (deleteData) {
 			System.out.println("Deleting raw data in: " + resultDir.getName());
-
 			FileUtils.deleteDirectory(resultDir);
 		}
 

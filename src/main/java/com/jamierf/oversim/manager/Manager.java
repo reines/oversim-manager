@@ -19,9 +19,11 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.apache.commons.lang.StringUtils;
 
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
+import com.jamierf.oversim.manager.util.DirectoryArchiver;
 
 public class Manager {
 
@@ -104,8 +106,8 @@ public class Manager {
 	protected final List<SimulationThread> threads;
 	protected final List<Runnable> queue;
 	protected final String[] wantedScalars;
-	protected final boolean compressData;
 	protected final boolean deleteData;
+	protected DirectoryArchiver archiver;
 	protected long startTime;
 	protected boolean finished;
 	protected int pendingRuns;
@@ -122,7 +124,7 @@ public class Manager {
 				maxThreads = overrideCoreCount;
 			}
 			catch (ConversionException e) {
-				throw new RuntimeException("Malformed configuration, max-threads must be an integer!");
+				throw new RuntimeException("Malformed configuration, simulation.max-threads must be an integer!");
 			}
 		}
 
@@ -140,7 +142,17 @@ public class Manager {
 		workingDir = new File(config.getString("simulation.working-dir", "."));
 		configFile = config.getString("simulation.config-file", "omnetpp.ini");
 
-		compressData = config.getBoolean("data.compress", false);
+		archiver = null;
+		if (config.getBoolean("data.compress", false)) {
+			try {
+				DirectoryArchiver.ArchiveType type = DirectoryArchiver.ArchiveType.valueOf(config.getString("data.compression-type", "TAR_GZIP"));
+				archiver = new DirectoryArchiver(type);
+			}
+			catch (IllegalArgumentException e) {
+				throw new RuntimeException("Malformed configuration, data.compression-type must be one of: " + StringUtils.join(DirectoryArchiver.ArchiveType.values(), ", ") + ".");
+			}
+		}
+
 		deleteData = config.getBoolean("data.delete", false);
 
 		finished = false;
@@ -307,7 +319,7 @@ public class Manager {
 	protected synchronized void checkForCompletion(SimulationConfig config) {
 		if (config.pendingRuns == 0) {
 			try {
-				config.processData(resultRootDir, compressData, deleteData);
+				config.processData(resultRootDir, archiver, deleteData);
 			}
 			catch (IOException e) {
 				// TODO Auto-generated catch block
