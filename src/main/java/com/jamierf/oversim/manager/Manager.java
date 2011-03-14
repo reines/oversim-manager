@@ -24,6 +24,8 @@ import org.apache.commons.lang.StringUtils;
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
 import com.jamierf.oversim.manager.util.DirectoryArchiver;
+import com.jamierf.oversim.manager.webui.ServerCommand;
+import com.jamierf.oversim.manager.webui.WebUI;
 
 public class Manager {
 
@@ -107,6 +109,7 @@ public class Manager {
 	protected final List<Runnable> queue;
 	protected final String[] wantedScalars;
 	protected final boolean deleteData;
+	protected final WebUI web;
 	protected DirectoryArchiver archiver;
 	protected long startTime;
 	protected boolean finished;
@@ -176,6 +179,11 @@ public class Manager {
 		}
 
 		System.out.println("Initialized " + threads.size() + " threads.");
+
+		web = new WebUI(config.getInt("webui.port", 8090), this);
+		web.start();
+
+		System.out.println("WebUI started at: " + web.getUri());
 	}
 
 	public synchronized void addConfig(String configName) throws IOException {
@@ -199,6 +207,14 @@ public class Manager {
 		System.out.println("Result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
+
+		ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
+
+		command.add("config", config.toString());
+		command.add("totalRunCount", totalRunCount);
+		command.add("resultDir", config.getResultDir().getCanonicalPath());
+
+		web.sendMessage(command);
 
 		this.notifyAll();
 	}
@@ -253,6 +269,12 @@ public class Manager {
 		while (!finished)
 			this.wait();
 
+		ServerCommand command = new ServerCommand(ServerCommand.Type.SHUTDOWN);
+
+		web.sendMessage(command);
+
+		web.stop();
+
 		System.out.println("All runs completed, terminating.");
 		System.exit(0);
 	}
@@ -262,6 +284,19 @@ public class Manager {
 			this.wait();
 
 		return queue.remove(0);
+	}
+
+	public synchronized void started(Runnable runnable) {
+		if (runnable instanceof SimulationRun) {
+			SimulationRun run = (SimulationRun) runnable;
+
+			ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
+
+			command.add("config", run.getConfig().toString());
+			command.add("run", run.getRunId());
+
+			web.sendMessage(command);
+		}
 	}
 
 	public synchronized void completed(Runnable runnable) {
@@ -278,6 +313,13 @@ public class Manager {
 			// Queue a data processing instance for this run
 			queue.add(new SimulationData(run.getRunId(), wantedScalars, run.getConfig()));
 			this.notifyAll();
+
+			ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
+
+			command.add("config", config.toString());
+			command.add("run", run.getRunId());
+
+			web.sendMessage(command);
 
 			config.pendingRuns++;
 			pendingRuns++;
@@ -298,10 +340,18 @@ public class Manager {
 
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
-			config = ((SimulationRun) runnable).getConfig();
+			SimulationRun run = (SimulationRun) runnable;
+			config = run.getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
+
+			ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
+
+			command.add("config", config.toString());
+			command.add("run", run.getRunId());
+
+			web.sendMessage(command);
 
 			config.failedRuns++;
 		}
@@ -326,6 +376,12 @@ public class Manager {
 				e.printStackTrace();
 			}
 		}
+
+		ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
+
+		command.add("config", config.toString());
+
+		web.sendMessage(command);
 
 		if (pendingRuns == 0) {
 			finished = true;

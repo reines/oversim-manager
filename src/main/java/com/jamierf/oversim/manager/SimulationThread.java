@@ -30,6 +30,7 @@ public class SimulationThread extends Thread {
 				long runStartTime = System.currentTimeMillis();
 
 				System.out.println(this + " starting " + runnable + ".");
+				manager.started(runnable);
 				runnable.run();
 
 				// Mark this simulation as completed
