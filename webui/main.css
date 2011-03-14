@@ -1,1 +1,65 @@
 @import url(reset-min.css);
+
+html, body {
+	height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+.clearer {
+	clear: both;
+}
+
+#container {
+	position: relative;
+	height: auto !important;
+	min-height: 100%;
+}
+
+header {
+	background: #E5E5E5 url('images/oversim_logo.png') no-repeat left center;
+	border-bottom: 1px solid #000;
+	height: 60px;
+	padding: 5px;
+}
+
+nav {
+	margin: 10px;
+	float: right;
+}
+
+nav ul li {
+	padding: 5px;
+	float: left;
+}
+
+#queue {
+	width: 100%;
+	font-size: 0.8em;
+}
+
+#queue thead {
+	border-bottom: 1px solid #000;
+}
+
+#queue td, #queue th {
+	padding: 2px;
+}
+
+#output {
+	position: absolute;
+	bottom: 0;
+	height: 200px;
+	width: 100%;
+	border-top: 1px solid #000;
+	background-color: #000;
+	color: #E5E5E5;
+	font-size: 0.8em;
+}
+
+#output pre {
+	height: 100%;
+	overflow: scroll;
+}

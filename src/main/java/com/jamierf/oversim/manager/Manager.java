@@ -20,6 +20,7 @@ import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.time.DurationFormatUtils;
 
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
@@ -131,6 +132,9 @@ public class Manager {
 			}
 		}
 
+		web = new WebUI(config.getInt("webui.port", 8090), this);
+		web.start();
+
 		configs = new LinkedList<SimulationConfig>();
 
 		// Fetch a list of scalars that we care about, then quote them so they are usable inside a regex
@@ -178,12 +182,9 @@ public class Manager {
 			threads.add(thread);
 		}
 
-		System.out.println("Initialized " + threads.size() + " threads.");
+		this.println("Initialized " + threads.size() + " threads.");
 
-		web = new WebUI(config.getInt("webui.port", 8090), this);
-		web.start();
-
-		System.out.println("WebUI started at: " + web.getUri());
+		this.println("WebUI started at: " + web.getUri());
 	}
 
 	public synchronized void addConfig(String configName) throws IOException {
@@ -203,8 +204,8 @@ public class Manager {
 		// Shuffle the queue to help prevent bunching of memory intensive configurations
 		Collections.shuffle(queue);
 
-		System.out.println("Added configuration: " + config + " with " + totalRunCount + " runs");
-		System.out.println("Result dir: " + config.getResultDir().getCanonicalPath());
+		this.println("Added configuration: " + config + " with " + totalRunCount + " runs");
+		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
 
 		configs.add(config);
 
@@ -269,14 +270,8 @@ public class Manager {
 		while (!finished)
 			this.wait();
 
-		ServerCommand command = new ServerCommand(ServerCommand.Type.SHUTDOWN);
-
-		web.sendMessage(command);
-
-		web.stop();
-
-		System.out.println("All runs completed, terminating.");
-		System.exit(0);
+		this.println("All runs completed, terminating.");
+		this.shutdown();
 	}
 
 	public synchronized Runnable poll() throws InterruptedException {
@@ -286,7 +281,9 @@ public class Manager {
 		return queue.remove(0);
 	}
 
-	public synchronized void started(Runnable runnable) {
+	public synchronized void started(SimulationThread thread, Runnable runnable) {
+		this.println(thread + " starting " + runnable + ".");
+
 		if (runnable instanceof SimulationRun) {
 			SimulationRun run = (SimulationRun) runnable;
 
@@ -299,7 +296,9 @@ public class Manager {
 		}
 	}
 
-	public synchronized void completed(Runnable runnable) {
+	public synchronized void completed(SimulationThread thread, Runnable runnable, long duration) {
+		this.println(thread + " completed " + runnable + " in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ".");
+
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
 			SimulationRun run = (SimulationRun) runnable;
@@ -318,6 +317,7 @@ public class Manager {
 
 			command.add("config", config.toString());
 			command.add("run", run.getRunId());
+			command.add("duration", duration);
 
 			web.sendMessage(command);
 
@@ -335,8 +335,8 @@ public class Manager {
 			checkForCompletion(config);
 	}
 
-	public synchronized void failed(Runnable runnable) {
-		System.out.println(runnable + " failed!");
+	public synchronized void failed(SimulationThread thread, Runnable runnable) {
+		this.println(thread + " failed " + runnable);
 
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
@@ -369,7 +369,7 @@ public class Manager {
 	protected synchronized void checkForCompletion(SimulationConfig config) {
 		if (config.pendingRuns == 0) {
 			try {
-				config.processData(resultRootDir, archiver, deleteData);
+				config.processData(this, resultRootDir, archiver, deleteData);
 			}
 			catch (IOException e) {
 				// TODO Auto-generated catch block
@@ -387,5 +387,28 @@ public class Manager {
 			finished = true;
 			this.notifyAll();
 		}
+	}
+
+	public synchronized void println(Object o) {
+		String line = o.toString();
+
+		System.out.println(line);
+
+		if (web == null)
+			return;
+
+		ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
+		command.add("line", line);
+
+		web.sendMessage(command);
+	}
+
+	public synchronized void shutdown() {
+		this.println("Shutdown requested.");
+
+		web.sendMessage(new ServerCommand(ServerCommand.Type.SHUTDOWN));
+		try { web.stop(); } catch (IOException e) { }
+
+		System.exit(0);
 	}
 }

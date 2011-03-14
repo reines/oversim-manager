@@ -8,6 +8,35 @@
 		<script type="text/javascript" src="main.js"></script>
 	</head>
 	<body>
-
+		<div id="container">
+			<header>
+				<nav>
+					<ul>
+						<li><a href="#" class="button-find" title="Find"><img src="images/search.png" alt="Find" /></a></li>
+						<li><a href="#" class="button-config" title="Config"><img src="images/utilities.png" alt="Config" /></a></li>
+						<li><a href="#" class="button-start" title="Start"><img src="images/play.png" alt="Start" /></a></li>
+						<li><a href="#" class="button-pause" title="Pause"><img src="images/pause.png" alt="Pause" /></a></li>
+						<li><a href="#" class="button-cancel" title="Cancel"><img src="images/cancel.png" alt="Cancel" /></a></li>
+					</ul>
+					<div class="clearer"><!-- clearer --></div>
+				</nav>
+				<div class="clearer"><!-- clearer --></div>
+			</header>
+			<table id="queue">
+				<thead>
+					<tr>
+						<th>Config</th>
+						<th>Run ID</th>
+						<th>Status</th>
+						<th>Result Directory</th>
+						<th class="actions">&nbsp;</th>
+					</tr>
+				</thead>
+				<tbody></tbody>
+			</table>
+			<section id="output">
+				<pre></pre>
+			</section>
+		</div>
 	</body>
 </html>

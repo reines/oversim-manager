@@ -2,12 +2,16 @@ package com.jamierf.oversim.manager.webui;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.webbitserver.WebServer;
 import org.webbitserver.WebServers;
 import org.webbitserver.handler.StaticFileHandler;
 
 import com.jamierf.oversim.manager.Manager;
+import com.jamierf.oversim.manager.webui.handler.ClientCommandHandler;
+import com.jamierf.oversim.manager.webui.handler.ShutdownHandler;
 
 public class WebUI {
 
@@ -15,6 +19,7 @@ public class WebUI {
 	protected final Manager manager;
 	protected final StaticFileHandler staticHandler;
 	protected final WebHandler socketHandler;
+	protected final Map<ClientCommand.Type, ClientCommandHandler> handlers;
 
 	public WebUI(int port, Manager manager) {
 		this.manager = manager;
@@ -26,6 +31,10 @@ public class WebUI {
 
 		socketHandler = new WebHandler(this);
 		server.add("/ws", socketHandler);
+
+		handlers = new HashMap<ClientCommand.Type, ClientCommandHandler>();
+
+		handlers.put(ClientCommand.Type.SHUTDOWN, new ShutdownHandler(manager));
 	}
 
 	public void start() throws IOException {
@@ -38,9 +47,12 @@ public class WebUI {
 		socketHandler.broadcast(message);
 	}
 
-	public ServerCommand receiveMessage(ClientCommand command) {
+	public ServerCommand receiveMessage(ClientCommand command) throws Exception {
+		ClientCommandHandler handler = handlers.get(command.type);
+		if (handler == null)
+			return null;
 
-		return null;
+		return handler.handleCommand(command);
 	}
 
 	public void stop() throws IOException {

@@ -27,6 +27,7 @@ public class ClientCommand {
 
 	public String getString(String key) { if (!map.containsKey(key)) return ""; return (String) map.get(key); }
 	public int getInt(String key) { if (!map.containsKey(key)) return 0; return (Integer) map.get(key); }
+	public long getLong(String key) { if (!map.containsKey(key)) return 0; return (Long) map.get(key); }
 	public boolean getBoolean(String key) { if (!map.containsKey(key)) return false; return (Boolean) map.get(key); }
 
 	public String toString() {

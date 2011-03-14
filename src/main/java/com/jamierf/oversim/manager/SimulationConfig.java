@@ -71,13 +71,13 @@ public class SimulationConfig extends DataSet {
 		return parameters;
 	}
 
-	public void processData(File resultRootDir, DirectoryArchiver archiver, boolean deleteData) throws IOException {
+	public void processData(Manager manager, File resultRootDir, DirectoryArchiver archiver, boolean deleteData) throws IOException {
 		// Lets process the data
-		System.out.println("-------------------------------------");
+		manager.println("-------------------------------------");
 
 		// If we have any data, output a CSV of it
 		if (super.hasData()) {
-			System.out.println("Creating CSV file at: " + resultDir.getName() + ".csv");
+			manager.println("Creating CSV file at: " + resultDir.getName() + ".csv");
 
 			// Save the collated data to a CSV file
 			super.writeCSV(new File(resultRootDir, resultDir.getName() + ".csv"));
@@ -85,24 +85,24 @@ public class SimulationConfig extends DataSet {
 
 		// If we should compress the raw data, do it
 		if (archiver != null) {
-			System.out.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
+			manager.println("Compressing raw data to: " + resultDir.getName() + ".tar.gz");
 			archiver.compress(resultDir, new File(resultRootDir, resultDir.getName() + ".tar.gz"));
 		}
 
 		// If we should delete the raw data, do it
 		if (deleteData) {
-			System.out.println("Deleting raw data in: " + resultDir.getName());
+			manager.println("Deleting raw data in: " + resultDir.getName());
 			FileUtils.deleteDirectory(resultDir);
 		}
 
 		// Display a summary
-		System.out.println("-------------------------------------");
-		System.out.println("Config: " + this);
-		System.out.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
-		System.out.println("Completed runs: " + completedRuns);
-		System.out.println("Failed runs: " + failedRuns);
+		manager.println("-------------------------------------");
+		manager.println("Config: " + this);
+		manager.println("Total duration: " + DurationFormatUtils.formatDurationWords(System.currentTimeMillis() - startTime, true, true));
+		manager.println("Completed runs: " + completedRuns);
+		manager.println("Failed runs: " + failedRuns);
 
-		System.out.println("-------------------------------------");
+		manager.println("-------------------------------------");
 	}
 
 	@Override
