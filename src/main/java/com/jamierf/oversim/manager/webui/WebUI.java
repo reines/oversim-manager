@@ -47,6 +47,15 @@ public class WebUI {
 		socketHandler.broadcast(message);
 	}
 
+	public ServerCommand onOpen() {
+		ServerCommand reply = new ServerCommand(ServerCommand.Type.NEW_CONNECTION);
+
+		reply.add("output", manager.getBuffer());
+		reply.add("paused", manager.isPaused());
+
+		return reply;
+	}
+
 	public ServerCommand receiveMessage(ClientCommand command) throws Exception {
 		ClientCommandHandler handler = handlers.get(command.type);
 		if (handler == null)

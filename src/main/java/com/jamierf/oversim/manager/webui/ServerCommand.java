@@ -7,7 +7,7 @@ import org.json.simple.JSONValue;
 
 public class ServerCommand {
 
-	public static enum Type {ADDED_CONFIG, COMPLETED_CONFIG, STARTED_RUN, COMPLETED_RUN, FAILED_RUN, SHUTDOWN, DISPLAY_LOG};
+	public static enum Type {NEW_CONNECTION, ADDED_CONFIG, COMPLETED_CONFIG, STARTED_RUN, COMPLETED_RUN, FAILED_RUN, SHUTDOWN, DISPLAY_LOG};
 
 	public final Type type;
 	protected final Map<String, Object> map;

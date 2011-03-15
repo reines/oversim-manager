@@ -46,6 +46,8 @@ public class WebHandler implements WebSocketHandler {
 	public synchronized void onOpen(WebSocketConnection connection) throws Exception {
 		clients.add(connection);
 
-		// TODO: Send initial data
+		ServerCommand reply = web.onOpen();
+		if (reply != null)
+			connection.send(reply.toString());
 	}
 }

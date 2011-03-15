@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -67,39 +66,6 @@ public class Manager {
 		}
 	}
 
-	public static File findOverSim(File workingDir) throws FileNotFoundException {
-		File release = new File(workingDir, "../out/gcc-release/src/OverSim");
-		if (release.exists()) {
-			System.out.println("Using OverSim in RELEASE mode.");
-			return release;
-		}
-
-		File debug = new File(workingDir, "../out/gcc-debug/src/OverSim");
-		if (debug.exists()) {
-			System.out.println("Using OverSim in DEBUG mode.");
-
-			Scanner scanner = new Scanner(System.in);
-			System.out.print("This will be slow! Are you sure you wish to continue? [y/n]: ");
-
-			try {
-				String response = scanner.next();
-				if (!response.equalsIgnoreCase("y") && !response.equalsIgnoreCase("yes"))
-					throw new RuntimeException("Simulations cancelled.");
-			}
-			finally {
-				scanner.close();
-			}
-
-			return debug;
-		}
-
-		File link = new File(workingDir, "../src/OverSim");
-		if (link.exists())
-			return link;
-
-		throw new FileNotFoundException("Unable to locate OverSim executable.");
-	}
-
 	protected final File overSim;
 	protected final File workingDir;
 	protected final File resultRootDir;
@@ -111,6 +77,8 @@ public class Manager {
 	protected final String[] wantedScalars;
 	protected final boolean deleteData;
 	protected final WebUI web;
+	protected final StringBuilder buffer;
+	protected boolean paused;
 	protected DirectoryArchiver archiver;
 	protected long startTime;
 	protected boolean finished;
@@ -131,6 +99,8 @@ public class Manager {
 				throw new RuntimeException("Malformed configuration, simulation.max-threads must be an integer!");
 			}
 		}
+
+		buffer = new StringBuilder();
 
 		web = new WebUI(config.getInt("webui.port", 8090), this);
 		web.start();
@@ -169,12 +139,27 @@ public class Manager {
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getCanonicalPath());
 
 		// Find OverSim - attempt to use the RELEASE version by default
-		overSim = Manager.findOverSim(workingDir);
+		File release = new File(workingDir, "../out/gcc-release/src/OverSim");
+		File debug = new File(workingDir, "../out/gcc-debug/src/OverSim");
+		File link = new File(workingDir, "../src/OverSim");
+		if (release.exists()) {
+			this.println("Using OverSim in RELEASE mode.");
+			overSim = release;
+		}
+		else if (debug.exists()) {
+			this.println("Using OverSim in DEBUG mode.");
+			overSim = debug;
+		}
+		else if (link.exists())
+			overSim = link;
+		else
+			throw new FileNotFoundException("Unable to locate OverSim executable.");
 
 		threads = new ArrayList<SimulationThread>(maxThreads);
 		queue = new ArrayList<Runnable>();
 
 		pendingRuns = 0;
+		paused = false;
 
 		// Create threads
 		for (int i = 0;i < maxThreads;i++) {
@@ -183,8 +168,15 @@ public class Manager {
 		}
 
 		this.println("Initialized " + threads.size() + " threads.");
-
 		this.println("WebUI started at: " + web.getUri());
+	}
+
+	public synchronized void setPaused(boolean paused) {
+		this.paused = paused;
+	}
+
+	public boolean isPaused() {
+		return paused;
 	}
 
 	public synchronized void addConfig(String configName) throws IOException {
@@ -389,10 +381,15 @@ public class Manager {
 		}
 	}
 
+	public String getBuffer() {
+		return buffer.toString().trim();
+	}
+
 	public synchronized void println(Object o) {
 		String line = o.toString();
 
 		System.out.println(line);
+		buffer.append(line + '\n');
 
 		if (web == null)
 			return;

@@ -1,7 +1,13 @@
 var socket = null;
+var queue = null;
 var output = null;
+var paused = false;
+var info = {};
 
 function htmlencode(str) {
+	if (typeof str != 'string')
+		return str;
+
 	return str
 	.replace(/&/g, "&amp;")
 	.replace(/</g, "&lt;")
@@ -28,7 +34,18 @@ $(document).ready(function() {
 		onError(exception);
 	}
 
+	queue = $('#queue');
+	queue.tablesorter({
+		headers: {
+			4: { sorter: false }
+		}
+	});
+
 	output = $('#output>pre');
+
+	info.status = $('#info .info-status>span');
+	info.load = $('#info .info-load>span');
+	info.runs = $('#info .info-runs>span');
 
 	// Cancel button
 	$('nav .button-cancel').click(function() {
@@ -46,12 +63,48 @@ $(document).ready(function() {
 
 /* general functions */
 
+function addConfigRow(config, runID, status, resultDir) {
+	var row = $('<tr>')
+	.append($('<td>' + htmlencode(config) + '</td>'))
+	.append($('<td>' + htmlencode(runID) + '</td>'))
+	.append($('<td>' + htmlencode(status) + '</td>'))
+	.append($('<td>' + htmlencode(resultDir) + '</td>'));
+
+	queue.find('tbody').append(row);
+
+	queue.trigger('update');
+	queue.trigger('sort');
+}
+
+function setStatus() {
+	var playpause = $('nav .button-playpause');
+
+	if (socket == null || socket.readyState != WebSocket.OPEN) {
+		info.status.attr('style', 'color: red');
+		info.status.html('terminated');
+
+		playpause.parent().remove();
+
+		return;
+	}
+
+	info.status.attr('style', 'color: ' + (paused ? 'orange' : 'green'));
+	info.status.html(paused ? 'paused' : 'running');
+
+	playpause.attr('title', paused ? 'Start' : 'Pause');
+
+	playpause = playpause.find('img');
+	playpause.attr('src', 'images/' + (paused ? 'play' : 'pause') + '.png');
+	playpause.attr('alt', paused ? 'Start' : 'Pause');
+}
+
 function onOpen() {
 	println('Connected to OverSim-Manager.', 'green');
 }
 
 function onClose() {
 	println('Connection to OverSim-Manager lost!', 'red');
+	socket = null;
 }
 
 function onError(exception) {
@@ -60,6 +113,7 @@ function onError(exception) {
 
 function onMessage(type, data) {
 	switch (type) {
+		case 'NEW_CONNECTION':	return onNewConnection(data.output, data.paused);
 		case 'ADDED_CONFIG': return onAddedConfig(data.config, data.totalRunCount, data.resultDir);
 		case 'COMPLETED_CONFIG': return onCompletedConfig(data.config);
 		case 'STARTED_RUN': return onStartedRun(data.config, data.run);
@@ -78,6 +132,7 @@ function println(line) {
 
 function println(line, color) {
 	output.html(output.html() + '<span style="color: ' + color + '">' + htmlencode(line) + '</span>\n');
+	// TODO: Scroll down
 }
 
 function sendMessage(type) {
@@ -100,8 +155,19 @@ function sendMessage(type, data) {
 
 /* server commands */
 
-function onAddedConfig(configName, totalRunCount, resultDir) {
+function onNewConnection(output, paused) {
+	println(output);
 
+	this.paused = paused;
+	setStatus();
+
+	addConfigRow('KademliaTest0', 1, 'test', '/home/jamie/Data/test-435435/');
+	addConfigRow('KademliaTest1', 0, 'test', '/home/jamie/Data/test-435435/');
+}
+
+function onAddedConfig(configName, totalRunCount, resultDir) {
+	for (var runID = 0;runID < totalRunCount;runID++)
+		addConfigRow(configName, runID, 'test', resultDir);
 }
 
 function onCompletedConfig(configName) {
@@ -121,11 +187,16 @@ function onFailedRun(configName, runId) {
 }
 
 function onDisplayLog(line) {
-	println(line); // TODO: htmlencode?
+	println(line);
 }
 
 function onShutdown() {
+	if (socket != null) {
+		socket.close();
+		socket = null;
+	}
 
+	setStatus();
 }
 
 /* client commands */

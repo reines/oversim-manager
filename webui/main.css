@@ -2,6 +2,7 @@
 
 html, body {
 	height: 100%;
+	font-size: 10pt;
 }
 
 a {
@@ -35,17 +36,41 @@ nav ul li {
 	float: left;
 }
 
-#queue {
-	width: 100%;
-	font-size: 0.8em;
+#info {
+	margin-left: 400px;
 }
 
-#queue thead {
+#queue {
+	width: 100%;
+	font-size: 0.9em;
+	text-align: left;
+}
+
+#queue thead tr th, #queue tbody tr td {
+	padding: 4px;
+}
+
+#queue thead tr th {
+	background:#667AB3 none no-repeat center right;
+	color: #FFF;
 	border-bottom: 1px solid #000;
 }
 
-#queue td, #queue th {
-	padding: 2px;
+#queue thead tr th.header {
+	background-image: url('images/bg.gif');
+	cursor: pointer;
+}
+
+#queue thead tr .headerSortUp {
+	background-image: url('images/asc.gif');
+}
+
+#queue thead tr .headerSortDown {
+	background-image: url('images/desc.gif');
+}
+
+#queue tbody tr.odd td {
+	background-color: red;
 }
 
 #output {
@@ -56,10 +81,10 @@ nav ul li {
 	border-top: 1px solid #000;
 	background-color: #000;
 	color: #E5E5E5;
-	font-size: 0.8em;
+	font-size: 0.9em;
 }
 
 #output pre {
 	height: 100%;
-	overflow: scroll;
+	overflow: auto;
 }
