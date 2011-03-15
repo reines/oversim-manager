@@ -6,6 +6,7 @@
 		<link rel="stylesheet" type="text/css" href="main.css" />
 		<script type="text/javascript" src="jquery-1.5.1.min.js"></script>
 		<script type="text/javascript" src="jquery.tablesorter.min.js"></script>
+		<script type="text/javascript" src="jquery.scrollTo-1.4.2-min.js"></script>
 		<script type="text/javascript" src="main.js"></script>
 	</head>
 	<body>
@@ -13,10 +14,10 @@
 			<header>
 				<nav>
 					<ul>
-						<li><a href="#" class="button-find" title="Find"><img src="images/search.png" alt="Find" /></a></li>
-						<li><a href="#" class="button-config" title="Config"><img src="images/utilities.png" alt="Config" /></a></li>
-						<li><a href="#" class="button-playpause" title="Start"><img src="images/play.png" alt="Start" /></a></li>
-						<li><a href="#" class="button-cancel" title="Cancel"><img src="images/cancel.png" alt="Cancel" /></a></li>
+						<li class="button-find"><a href="#" title="Find"><img src="images/search.png" alt="Find" /></a></li>
+						<li class="button-config"><a href="#" title="Config"><img src="images/utilities.png" alt="Config" /></a></li>
+						<li class="button-playpause"><a href="#" title="Start"><img src="images/play.png" alt="Start" /></a></li>
+						<li class="button-cancel"><a href="#" title="Cancel"><img src="images/cancel.png" alt="Cancel" /></a></li>
 					</ul>
 					<div class="clearer"><!-- clearer --></div>
 				</nav>
@@ -27,20 +28,22 @@
 				</ul>
 				<div class="clearer"><!-- clearer --></div>
 			</header>
-			<table id="queue">
-				<thead>
-					<tr>
-						<th>Config</th>
-						<th>Run ID</th>
-						<th>Status</th>
-						<th>Result Directory</th>
-						<th class="actions">&nbsp;</th>
-					</tr>
-				</thead>
-				<tbody></tbody>
-			</table>
 			<section id="output">
 				<pre></pre>
+			</section>
+			<section id="queue">
+				<table>
+					<thead>
+						<tr>
+							<th>Config</th>
+							<th>Run ID</th>
+							<th>Status</th>
+							<th>Result Directory</th>
+							<th class="actions">&nbsp;</th>
+						</tr>
+					</thead>
+					<tbody></tbody>
+				</table>
 			</section>
 		</div>
 	</body>

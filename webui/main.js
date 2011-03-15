@@ -4,6 +4,13 @@ var output = null;
 var paused = false;
 var info = {};
 
+var RunStatus = {
+	QUEUED: {name: 'queued', colour: 'inherit'},
+	RUNNING: {name: 'running', colour: 'orange'},
+	COMPLETED: {name: 'completed', colour: 'green'},
+	FAILED: {name: 'failed', colour: 'red'}
+};
+
 function htmlencode(str) {
 	if (typeof str != 'string')
 		return str;
@@ -34,7 +41,7 @@ $(document).ready(function() {
 		onError(exception);
 	}
 
-	queue = $('#queue');
+	queue = $('#queue>table');
 	queue.tablesorter({
 		headers: {
 			4: { sorter: false }
@@ -43,20 +50,18 @@ $(document).ready(function() {
 
 	output = $('#output>pre');
 
-	info.status = $('#info .info-status>span');
-	info.load = $('#info .info-load>span');
-	info.runs = $('#info .info-runs>span');
+	info.status = $('#info>.info-status>span');
+	info.load = $('#info>.info-load>span');
+	info.runs = $('#info>.info-runs>span');
 
 	// Cancel button
-	$('nav .button-cancel').click(function() {
+	$('nav>ul>li.button-cancel>a').click(function() {
 		if (confirm('Are you sure you want to shut down OverSim-Manager and all running simulations?'))
 			sendShutdown();
 
 		return false;
 	});
 
-	// Start button
-	// Pause button
 	// Config button
 	// Find button
 });
@@ -65,10 +70,15 @@ $(document).ready(function() {
 
 function addConfigRow(config, runID, status, resultDir) {
 	var row = $('<tr>')
-	.append($('<td>' + htmlencode(config) + '</td>'))
-	.append($('<td>' + htmlencode(runID) + '</td>'))
-	.append($('<td>' + htmlencode(status) + '</td>'))
-	.append($('<td>' + htmlencode(resultDir) + '</td>'));
+		.append($('<td class="row-config">' + htmlencode(config) + '</td>'))
+		.append($('<td class="row-id">' + htmlencode(runID) + '</td>'))
+		.append($('<td class="row-status" style="color: ' + htmlencode(status.colour) + '">' + htmlencode(status.name) + '</td>'))
+		.append($('<td class="row-resultdir">' + htmlencode(resultDir) + '</td>'))
+		.append($('<td class="row-actions"></td>')
+			.append($('<ul>')
+				.append($('<li class="action-remove"><a href="#" title="Remove"><img src="images/cross.png" alt="Remove" /></a></li>'))
+			)
+		);
 
 	queue.find('tbody').append(row);
 
@@ -77,7 +87,7 @@ function addConfigRow(config, runID, status, resultDir) {
 }
 
 function setStatus() {
-	var playpause = $('nav .button-playpause');
+	var playpause = $('nav>ul>li.button-playpause>a');
 
 	if (socket == null || socket.readyState != WebSocket.OPEN) {
 		info.status.attr('style', 'color: red');
@@ -132,7 +142,8 @@ function println(line) {
 
 function println(line, color) {
 	output.html(output.html() + '<span style="color: ' + color + '">' + htmlencode(line) + '</span>\n');
-	// TODO: Scroll down
+
+	output.scrollTo('max', {axis: 'y'});
 }
 
 function sendMessage(type) {
@@ -161,8 +172,8 @@ function onNewConnection(output, paused) {
 	this.paused = paused;
 	setStatus();
 
-	addConfigRow('KademliaTest0', 1, 'test', '/home/jamie/Data/test-435435/');
-	addConfigRow('KademliaTest1', 0, 'test', '/home/jamie/Data/test-435435/');
+	for (var i = 0;i < 10;i++)
+		addConfigRow('KademliaTest' + i, i, RunStatus.QUEUED, '/home/jamie/Data/test-435435/');
 }
 
 function onAddedConfig(configName, totalRunCount, resultDir) {
