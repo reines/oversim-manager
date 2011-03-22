@@ -30,6 +30,13 @@
   		<artifactId>json-simple</artifactId>
   		<version>1.1</version>
   	</dependency>
+	<dependency>
+		<groupId>org.webbitserver</groupId>
+		<artifactId>webbit</artifactId>
+		<version>master</version>
+		<scope>system</scope>
+		<systemPath>${project.basedir}/webbit.jar</systemPath>
+	</dependency>
   </dependencies>
   <build>
   	<plugins>
