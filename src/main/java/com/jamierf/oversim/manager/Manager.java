@@ -3,6 +3,7 @@ package com.jamierf.oversim.manager;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -43,8 +44,10 @@ public class Manager {
 
 			Manager manager = new Manager(config);
 
-			for (String configName : args)
-				manager.addConfig(configName);
+//			for (String configName : args)
+//				manager.addRunConfig(configName);
+
+			manager.addDataConfig(args[0], args[1]);
 
 			manager.start();
 		}
@@ -179,7 +182,7 @@ public class Manager {
 		return paused;
 	}
 
-	public synchronized void addConfig(String configName) throws IOException {
+	public synchronized void addRunConfig(String configName) throws IOException {
 		int totalRunCount = this.countRuns(configName); // Fetch the total run count
 		if (totalRunCount == 0)
 			throw new RuntimeException("Invalid config name, 0 runs found.");
@@ -198,6 +201,7 @@ public class Manager {
 
 		this.println("Added configuration: " + config + " with " + totalRunCount + " runs");
 		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
+		this.println("Queue size now: " + queue.size());
 
 		configs.add(config);
 
@@ -212,8 +216,49 @@ public class Manager {
 		this.notifyAll();
 	}
 
-	protected int countRuns(String configName) throws IOException
-	{
+	public synchronized void addDataConfig(String configName, String id) throws IOException {
+		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, id);
+
+		FilenameFilter filter = new FilenameFilter() {
+			@Override
+			public boolean accept(File dir, String name) {
+				return name.endsWith(".sca");
+			}
+		};
+
+		String[] files = config.getResultDir().list(filter);
+		Pattern pattern = Pattern.compile("^" + Pattern.quote(configName) + "-(\\d+)\\.sca$");
+
+		// Create the queue of simulation data
+		for (String file : files) {
+			Matcher m = pattern.matcher(file);
+			if (!m.matches())
+				continue;
+
+			int i = Integer.parseInt(m.group(1));
+			SimulationData data = new SimulationData(i, wantedScalars, config);
+
+			queue.add(data);
+			config.pendingRuns++;
+		}
+
+		pendingRuns += config.pendingRuns;
+
+		// Shuffle the queue to help prevent bunching of memory intensive configurations
+		Collections.shuffle(queue);
+
+		this.println("Added result: " + config + " with " + config.completedRuns + " results.");
+		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
+		this.println("Queue size now: " + queue.size());
+
+		configs.add(config);
+
+		// TODO: WebUI call
+
+		this.notifyAll();
+	}
+
+	protected int countRuns(String configName) throws IOException {
 		List<String> command = new LinkedList<String>();
 
 		command.add(overSim.getCanonicalPath());

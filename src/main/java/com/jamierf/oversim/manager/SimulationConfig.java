@@ -10,7 +10,6 @@ import org.apache.commons.lang.time.DurationFormatUtils;
 
 import com.jamierf.oversim.manager.util.DirectoryArchiver;
 
-
 public class SimulationConfig extends DataSet {
 
 	protected final String configFile;
@@ -24,9 +23,28 @@ public class SimulationConfig extends DataSet {
 	public int completedRuns;
 	public int failedRuns;
 
+	public SimulationConfig(String configFile, String configName, File resultRootDir, String id) throws IOException {
+		this.configFile = configFile;
+		this.configName = configName;
+
+		resultDir = new File(resultRootDir, configName + "-" + id);
+		logDir = new File(resultDir, "logs");
+
+		parameters = new HashMap<String, String>();
+
+		// Add our result directory as an override parameter
+		parameters.put("result-dir", resultDir.getCanonicalPath());
+
+		startTime = System.currentTimeMillis();
+		pendingRuns = 0;
+		completedRuns = 0;
+		failedRuns = 0;
+	}
+
 	public SimulationConfig(String configFile, String configName, File resultRootDir, Map<String, String> globalParameters, int pendingRuns) throws IOException {
 		this.configFile = configFile;
 		this.configName = configName;
+		this.pendingRuns = pendingRuns;
 
 		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
 		if (!resultDir.mkdir())
@@ -44,9 +62,6 @@ public class SimulationConfig extends DataSet {
 		parameters.put("result-dir", resultDir.getCanonicalPath());
 
 		startTime = System.currentTimeMillis();
-
-		this.pendingRuns = pendingRuns;
-
 		completedRuns = 0;
 		failedRuns = 0;
 	}
