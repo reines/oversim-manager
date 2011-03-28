@@ -30,13 +30,16 @@
   		<artifactId>json-simple</artifactId>
   		<version>1.1</version>
   	</dependency>
-	<dependency>
-		<groupId>org.webbitserver</groupId>
-		<artifactId>webbit</artifactId>
-		<version>master</version>
-		<scope>system</scope>
-		<systemPath>${project.basedir}/webbit.jar</systemPath>
-	</dependency>
+  	<dependency>
+  		<groupId>org.webbitserver</groupId>
+  		<artifactId>webbit</artifactId>
+  		<version>0.1.2-SNAPSHOT</version>
+  	</dependency>
+  	<dependency>
+  		<groupId>org.jboss.netty</groupId>
+  		<artifactId>netty</artifactId>
+  		<version>3.2.4.Final</version>
+  	</dependency>
   </dependencies>
   <build>
   	<plugins>

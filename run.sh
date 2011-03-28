@@ -6,4 +6,4 @@ then
 	exit
 fi
 
-mvn exec:java -Dexec.mainClass="com.jamierf.oversim.manager.Manager" -Dexec.args="$*"
+mvn exec:java -Dexec.mainClass="com.jamierf.oversim.manager.main.RunSimulation" -Dexec.args="$*"
