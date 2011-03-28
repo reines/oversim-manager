@@ -88,9 +88,21 @@ public class SimulationData implements Runnable {
 				}
 
 				// Add the iterationvars as scalars
-				Matcher m = Pattern.compile("\\$([^=]+)=([^,\"]+)(?:[,\"]|$)").matcher(attributes.get("iterationvars"));
-				while (m.find())
-					scalars.put(m.group(1), m.group(2));
+				String iterationvars = attributes.get("iterationvars");
+				if (iterationvars.startsWith("\"") && iterationvars.endsWith("\"")) {
+					iterationvars = iterationvars.substring(1, iterationvars.length() - 1);
+					iterationvars = iterationvars.replaceAll("\\\\\"", "\"");
+				}
+
+				String[] vars = iterationvars.split(",");
+				Pattern pattern = Pattern.compile("\\$(.+?)=(\"?)(.+?)(\"?)$");
+				for (String var : vars) {
+					Matcher m = pattern.matcher(var);
+					if (!m.find())
+							continue;
+
+					scalars.put(m.group(1), m.group(3));
+				}
 
 				// TODO: Handle any vectors?
 			}
