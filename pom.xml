@@ -33,14 +33,16 @@
   	<dependency>
   		<groupId>org.webbitserver</groupId>
   		<artifactId>webbit</artifactId>
-  		<version>0.1.2-SNAPSHOT</version>
-  	</dependency>
-  	<dependency>
-  		<groupId>org.jboss.netty</groupId>
-  		<artifactId>netty</artifactId>
-  		<version>3.2.4.Final</version>
+  		<version>0.1.10</version>
   	</dependency>
   </dependencies>
+  <repositories>
+    <!-- for webbit -->
+	<repository>
+	  <id>oss.sonatype.org</id>
+	  <url>http://oss.sonatype.org/content/repositories/public/</url>
+	</repository>
+  </repositories>
   <build>
   	<plugins>
   		<plugin>
