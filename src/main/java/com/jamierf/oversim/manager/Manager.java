@@ -64,8 +64,14 @@ public class Manager {
 
 		buffer = new StringBuilder();
 
-		web = new WebUI(config.getInt("webui.port", 8090), this);
-		web.start();
+		// Should we start the WebUI?
+		if (config.getBoolean("webui.enabled", false))
+		{
+			web = new WebUI(config.getInt("webui.port", 8090), this);
+			web.start();
+		}
+		else
+			web = null;
 
 		configs = new LinkedList<SimulationConfig>();
 
@@ -130,7 +136,9 @@ public class Manager {
 		}
 
 		this.println("Initialized " + threads.size() + " threads.");
-		this.println("WebUI started at: " + web.getUri());
+
+		if (web != null)
+			this.println("WebUI started at: " + web.getUri());
 	}
 
 	public synchronized void setPaused(boolean paused) {
@@ -164,13 +172,15 @@ public class Manager {
 
 		configs.add(config);
 
-		ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
+		if (web != null) {
+			ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
 
-		command.add("config", config.toString());
-		command.add("totalRunCount", totalRunCount);
-		command.add("resultDir", config.getResultDir().getCanonicalPath());
+			command.add("config", config.toString());
+			command.add("totalRunCount", totalRunCount);
+			command.add("resultDir", config.getResultDir().getCanonicalPath());
 
-		web.sendMessage(command);
+			web.sendMessage(command);
+		}
 
 		this.notifyAll();
 	}
@@ -212,7 +222,9 @@ public class Manager {
 
 		configs.add(config);
 
-		// TODO: WebUI call
+		if (web != null) {
+			// TODO: WebUI call
+		}
 
 		this.notifyAll();
 	}
@@ -283,12 +295,14 @@ public class Manager {
 		if (runnable instanceof SimulationRun) {
 			SimulationRun run = (SimulationRun) runnable;
 
-			ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
+			if (web != null) {
+				ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
 
-			command.add("config", run.getConfig().toString());
-			command.add("run", run.getRunId());
+				command.add("config", run.getConfig().toString());
+				command.add("run", run.getRunId());
 
-			web.sendMessage(command);
+				web.sendMessage(command);
+			}
 		}
 	}
 
@@ -309,13 +323,15 @@ public class Manager {
 			queue.add(new SimulationData(run.getRunId(), wantedScalars, run.getConfig()));
 			this.notifyAll();
 
-			ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
+			if (web != null) {
+				ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
 
-			command.add("config", config.toString());
-			command.add("run", run.getRunId());
-			command.add("duration", duration);
+				command.add("config", config.toString());
+				command.add("run", run.getRunId());
+				command.add("duration", duration);
 
-			web.sendMessage(command);
+				web.sendMessage(command);
+			}
 
 			config.pendingRuns++;
 			pendingRuns++;
@@ -342,12 +358,14 @@ public class Manager {
 			config.pendingRuns--;
 			pendingRuns--;
 
-			ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
+			if (web != null) {
+				ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
 
-			command.add("config", config.toString());
-			command.add("run", run.getRunId());
+				command.add("config", config.toString());
+				command.add("run", run.getRunId());
 
-			web.sendMessage(command);
+				web.sendMessage(command);
+			}
 
 			config.failedRuns++;
 		}
@@ -373,11 +391,13 @@ public class Manager {
 			}
 		}
 
-		ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
+		if (web != null) {
+			ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
 
-		command.add("config", config.toString());
+			command.add("config", config.toString());
 
-		web.sendMessage(command);
+			web.sendMessage(command);
+		}
 
 		if (pendingRuns == 0) {
 			finished = true;
@@ -395,20 +415,21 @@ public class Manager {
 		System.out.println(line);
 		buffer.append(line + '\n');
 
-		if (web == null)
-			return;
+		if (web != null) {
+			ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
+			command.add("line", line);
 
-		ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
-		command.add("line", line);
-
-		web.sendMessage(command);
+			web.sendMessage(command);
+		}
 	}
 
 	public synchronized void shutdown() {
 		this.println("Shutdown requested.");
 
-		web.sendMessage(new ServerCommand(ServerCommand.Type.SHUTDOWN));
-		try { web.stop(); } catch (IOException e) { }
+		if (web != null) {
+			web.sendMessage(new ServerCommand(ServerCommand.Type.SHUTDOWN));
+			try { web.stop(); } catch (IOException e) { }
+		}
 
 		System.exit(0);
 	}
