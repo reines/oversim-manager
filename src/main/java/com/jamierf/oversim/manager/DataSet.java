@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.SortedMap;
@@ -13,6 +15,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 public class DataSet {
 
@@ -54,43 +57,44 @@ public class DataSet {
 		PrintWriter out = null;
 
 		try {
+			Collection<Object> row = new LinkedList<Object>();
+
 			out = new PrintWriter(new FileWriter(csvFile), true);
 
 			// Write the header
-			out.println(StringUtils.join(headers, ','));
+			row.clear();
+			for (String header : headers) {
+				row.add(header + ".mean");
+				row.add(header + ".stddev");
+			}
+			out.println(StringUtils.join(row, ','));
 
-			// Reduce all the queues down to a single set of scalars
-			for (Map.Entry<String, Queue<String[]>> entry : data.entrySet()) {
-				Queue<String[]> queue = entry.getValue();
-				int queueSize = queue.size();
+			// Combine all sets and produce summary statistics
+			for (Queue<String[]> queue : data.values()) {
+				if (queue.isEmpty())
+					continue;
 
-				// Remove the head of the queue, we will use this to store the final results
-				String[] scalars = queue.poll();
+				SummaryStatistics[] stats = new SummaryStatistics[queue.peek().length];
+				for (int i = 0;i < stats.length;i++)
+					stats[i] = new SummaryStatistics();
 
-				// If the queue had more than 1 set of scalars in it, we need to process them
-				if (queueSize > 1) {
-					for (String[] next;(next = queue.poll()) != null;) {
-						for (int i = 0;i < scalars.length;i++) {
-							try {
-								double value = Double.parseDouble(scalars[i]) + Double.parseDouble(next[i]);
-								scalars[i] = String.valueOf(value);
-							}
-							catch (NumberFormatException e) { }
-						}
-					}
-
-					// For each value in scalars, divide it by queueSize to get the mean again
-					for (int i = 0;i < scalars.length;i++) {
+				for (String[] next;(next = queue.poll()) != null;) {
+					for (int i = 0;i < stats.length;i++) {
 						try {
-							double value = Double.parseDouble(scalars[i]);
-							scalars[i] = String.valueOf(value / queueSize);
+							double value = Double.parseDouble(next[i]);
+							stats[i].addValue(value);
 						}
 						catch (NumberFormatException e) { }
 					}
 				}
 
-				// Put the collection into a CSV record
-				out.println(StringUtils.join(scalars, ','));
+				// Output all the statistics into a row
+				row.clear();
+				for (SummaryStatistics stat : stats) {
+					row.add(stat.getMean());
+					row.add(stat.getStandardDeviation());
+				}
+				out.println(StringUtils.join(row, ','));
 			}
 		}
 		finally {

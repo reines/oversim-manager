@@ -40,6 +40,7 @@ public class Manager {
 	protected final boolean deleteData;
 	protected final WebUI web;
 	protected final StringBuilder buffer;
+	protected final boolean shuffle;
 	protected boolean paused;
 	protected DirectoryArchiver archiver;
 	protected long startTime;
@@ -61,6 +62,9 @@ public class Manager {
 				throw new RuntimeException("Malformed configuration, simulation.max-threads must be an integer!");
 			}
 		}
+
+		// Should we shuffle runs after adding them?
+		shuffle = config.getBoolean("simulation.shuffle-runs", true);
 
 		buffer = new StringBuilder();
 
@@ -164,7 +168,8 @@ public class Manager {
 		}
 
 		// Shuffle the queue to help prevent bunching of memory intensive configurations
-		Collections.shuffle(queue);
+		if (shuffle)
+			Collections.shuffle(queue);
 
 		this.println("Added configuration: " + config + " with " + totalRunCount + " runs");
 		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
@@ -214,7 +219,8 @@ public class Manager {
 		pendingRuns += config.pendingRuns;
 
 		// Shuffle the queue to help prevent bunching of memory intensive configurations
-		Collections.shuffle(queue);
+		if (shuffle)
+			Collections.shuffle(queue);
 
 		this.println("Added result: " + config + " with " + config.completedRuns + " results.");
 		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
@@ -409,11 +415,12 @@ public class Manager {
 		return buffer.toString().trim();
 	}
 
-	public synchronized void println(Object o) {
+	public synchronized final void println(Object o) {
 		String line = o.toString();
 
 		System.out.println(line);
-		buffer.append(line + '\n');
+		buffer.append(line);
+		buffer.append('\n');
 
 		if (web != null) {
 			ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
