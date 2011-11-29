@@ -1,7 +1,11 @@
 package com.jamierf.oversim.manager;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SimulationThread extends Thread {
+
+	private static final Logger logger = LoggerFactory.getLogger(SimulationThread.class);
 
 	protected final Manager manager;
 
@@ -9,6 +13,7 @@ public class SimulationThread extends Thread {
 		this.manager = manager;
 	}
 
+	@Override
 	public void run() {
 		while (true) {
 			Runnable runnable = null;
@@ -16,10 +21,7 @@ public class SimulationThread extends Thread {
 			try {
 				runnable = manager.poll();
 			}
-			catch (InterruptedException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
+			catch (InterruptedException e1) { }
 
 			// The queue is empty, this thread is now finished
 			if (runnable == null)
@@ -35,7 +37,8 @@ public class SimulationThread extends Thread {
 				manager.completed(this, runnable, System.currentTimeMillis() - runStartTime);
 			}
 			catch (Exception e) {
-				System.err.println(e.getMessage());
+				if (logger.isWarnEnabled())
+					logger.warn(this + " failed", e);
 
 				// Something went wrong, mark as failed
 				manager.failed(this, runnable);

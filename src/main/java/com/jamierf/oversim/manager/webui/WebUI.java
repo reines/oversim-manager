@@ -2,6 +2,7 @@ package com.jamierf.oversim.manager.webui;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,7 +27,11 @@ public class WebUI {
 
 		server = WebServers.createWebServer(port);
 
-		staticHandler = new StaticFileHandler("./webui/");
+		final URL staticFiles = WebUI.class.getResource("files");
+		if (staticFiles == null)
+			throw new RuntimeException("Unable to find static WebUI files");
+
+		staticHandler = new StaticFileHandler(staticFiles.getPath());
 		server.add(staticHandler);
 
 		socketHandler = new WebHandler(this);

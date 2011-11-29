@@ -23,6 +23,15 @@ public class WebHandler implements WebSocketHandler {
 	}
 
 	@Override
+	public synchronized void onOpen(WebSocketConnection connection) throws Exception {
+		clients.add(connection);
+
+		final ServerCommand reply = web.onOpen();
+		if (reply != null)
+			connection.send(reply.toString());
+	}
+
+	@Override
 	public synchronized void onClose(WebSocketConnection connection) throws Exception {
 		clients.remove(connection);
 	}
@@ -43,11 +52,12 @@ public class WebHandler implements WebSocketHandler {
 	}
 
 	@Override
-	public synchronized void onOpen(WebSocketConnection connection) throws Exception {
-		clients.add(connection);
+	public synchronized void onMessage(WebSocketConnection arg0, byte[] message) throws Throwable {
+		// TODO Auto-generated method stub
+	}
 
-		final ServerCommand reply = web.onOpen();
-		if (reply != null)
-			connection.send(reply.toString());
+	@Override
+	public synchronized void onPong(WebSocketConnection arg0, String message) throws Throwable {
+		// TODO Auto-generated method stub
 	}
 }

@@ -4,10 +4,15 @@ import java.io.IOException;
 
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.jamierf.oversim.manager.Manager;
 
 public class Daemon {
+
+	private static final Logger logger = LoggerFactory.getLogger(Daemon.class);
+
 	public static final void main(String[] args) {
 		try {
 			// Load the config file
@@ -19,20 +24,20 @@ public class Daemon {
 			manager.start();
 		}
 		catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if (logger.isErrorEnabled())
+				logger.error("Error loading OverSim", e);
 		}
 		catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if (logger.isErrorEnabled())
+				logger.error("Error running OverSim", e);
 		}
 		catch (ConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if (logger.isErrorEnabled())
+				logger.error("Error loading configuration or malformed configuration", e);
 		}
 		catch (RuntimeException e) {
-			System.out.println(e.getMessage());
-			System.exit(1);
+			if (logger.isErrorEnabled())
+				logger.error("Error running manager", e);
 		}
 	}
 }

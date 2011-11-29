@@ -16,6 +16,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
@@ -47,7 +48,7 @@ public class Manager {
 	protected boolean finished;
 	protected int pendingRuns;
 
-	public Manager(Configuration config) throws IOException {
+	public Manager(Configuration config) throws IOException, ConfigurationException {
 		// Count how many available cores we should use (max)
 		int maxThreads = Runtime.getRuntime().availableProcessors();
 		if (config.containsKey("simulation.max-threads")) {
@@ -59,7 +60,7 @@ public class Manager {
 				maxThreads = overrideCoreCount;
 			}
 			catch (ConversionException e) {
-				throw new RuntimeException("Malformed configuration, simulation.max-threads must be an integer!");
+				throw new ConfigurationException("Malformed configuration, simulation.max-threads must be an integer!");
 			}
 		}
 
@@ -98,7 +99,7 @@ public class Manager {
 				archiver = new DirectoryArchiver(type);
 			}
 			catch (IllegalArgumentException e) {
-				throw new RuntimeException("Malformed configuration, data.compression-type must be one of: " + StringUtils.join(DirectoryArchiver.ArchiveType.values(), ", ") + ".");
+				throw new ConfigurationException("Malformed configuration, data.compression-type must be one of: " + StringUtils.join(DirectoryArchiver.ArchiveType.values(), ", ") + ".");
 			}
 		}
 
@@ -108,7 +109,7 @@ public class Manager {
 
 		resultRootDir = new File(workingDir, globalParameters.containsKey("result-dir") ? globalParameters.get("result-dir") : "results");
 		if (!resultRootDir.isDirectory())
-			throw new RuntimeException("Invalid result directory: " + resultRootDir.getCanonicalPath());
+			throw new ConfigurationException("Invalid result directory: " + resultRootDir.getCanonicalPath());
 
 		// Find OverSim - attempt to use the RELEASE version by default
 		final File release = new File(workingDir, "../out/gcc-release/src/OverSim");
