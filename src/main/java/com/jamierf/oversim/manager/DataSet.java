@@ -7,7 +7,6 @@ import java.io.PrintWriter;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.SortedMap;
@@ -63,14 +62,20 @@ public class DataSet {
 
 			// Write the header
 			row.clear();
+			row.add("uid");
+
 			for (String header : headers) {
 				row.add(header + ".mean");
 				row.add(header + ".stddev");
 			}
+
 			out.println(StringUtils.join(row, ','));
 
 			// Combine all sets and produce summary statistics
-			for (Queue<String[]> queue : data.values()) {
+			for (Map.Entry<String, Queue<String[]>> entry : data.entrySet()) {
+				String uid = entry.getKey();
+				Queue<String[]> queue = entry.getValue();
+
 				if (queue.isEmpty())
 					continue;
 
@@ -90,10 +95,13 @@ public class DataSet {
 
 				// Output all the statistics into a row
 				row.clear();
+				row.add(uid.replaceAll(",", ""));
+
 				for (SummaryStatistics stat : stats) {
 					row.add(stat.getMean());
 					row.add(stat.getStandardDeviation());
 				}
+
 				out.println(StringUtils.join(row, ','));
 			}
 		}

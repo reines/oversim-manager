@@ -73,7 +73,7 @@ public class SimulationData implements Runnable {
 					throw new RuntimeException("Malformed scalar file, no iterationvars found: " + sca.getCanonicalPath());
 
 				// Read the scalars
-				Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");
+				Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.\\d\\[\\]]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");
 				for (String line;(line = in.readLine()) != null;) {
 					// When we reach an empty line it signifies the end of the scalars
 					if (line.isEmpty())
@@ -85,23 +85,6 @@ public class SimulationData implements Runnable {
 
 					// Record the scalar
 					scalars.put(m.group(2), m.group(3));
-				}
-
-				// Add the iterationvars as scalars
-				String iterationvars = attributes.get("iterationvars");
-				if (iterationvars.startsWith("\"") && iterationvars.endsWith("\"")) {
-					iterationvars = iterationvars.substring(1, iterationvars.length() - 1);
-					iterationvars = iterationvars.replaceAll("\\\\\"", "\"");
-				}
-
-				String[] vars = iterationvars.split(",");
-				Pattern pattern = Pattern.compile("\\$(.+?)=(\"?)(.+?)(\"?)$");
-				for (String var : vars) {
-					Matcher m = pattern.matcher(var);
-					if (!m.find())
-							continue;
-
-					scalars.put(m.group(1), m.group(3));
 				}
 
 				// TODO: Handle any vectors?
