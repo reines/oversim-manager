@@ -32,14 +32,15 @@ public class SimulationData implements Runnable {
 		return config;
 	}
 
+	@Override
 	public void run() {
 		try {
-			File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
+			final File sca = new File(config.getResultDir(), config.getName() + "-" + runId + ".sca");
 			if (!sca.exists())
 				throw new FileNotFoundException("Unable to find scalar results for: " + config.getName() + "(" + runId + ")");
 
-			Map<String, String> attributes = new HashMap<String, String>();
-			SortedMap<String, String> scalars = new TreeMap<String, String>();
+			final Map<String, String> attributes = new HashMap<String, String>();
+			final SortedMap<String, String> scalars = new TreeMap<String, String>();
 
 			BufferedReader in = null;
 
@@ -47,21 +48,21 @@ public class SimulationData implements Runnable {
 				in = new BufferedReader(new FileReader(sca));
 
 				// Read the version number and check it is what we expect
-				String version = in.readLine();
+				final String version = in.readLine();
 				if (!version.matches("^version\\s2$"))
 					throw new RuntimeException("Unrecognised scalar result file version.");
 
 				@SuppressWarnings("unused")
-				String runIdentifier = in.readLine();
+				final String runIdentifier = in.readLine();
 
 				// Read the header
-				Pattern headerPattern = Pattern.compile("^attr\\s+(\\w+)\\s+(.+)$");
+				final Pattern headerPattern = Pattern.compile("^attr\\s+(\\w+)\\s+(.+)$");
 				for (String line;(line = in.readLine()) != null;) {
 					// When we reach an empty line it signifies the end of the header
 					if (line.isEmpty())
 						break;
 
-					Matcher m = headerPattern.matcher(line);
+					final Matcher m = headerPattern.matcher(line);
 					if (!m.find())
 						continue;
 
@@ -73,13 +74,13 @@ public class SimulationData implements Runnable {
 					throw new RuntimeException("Malformed scalar file, no iterationvars found: " + sca.getCanonicalPath());
 
 				// Read the scalars
-				Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.\\d\\[\\]]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");
+				final Pattern scalarPattern = Pattern.compile("^scalar\\s+([\\w\\.\\d\\[\\]]+)\\s+\"(" + StringUtils.join(wantedScalars, '|') + ")\"\\s+(.+)$");
 				for (String line;(line = in.readLine()) != null;) {
 					// When we reach an empty line it signifies the end of the scalars
 					if (line.isEmpty())
 						break;
 
-					Matcher m = scalarPattern.matcher(line);
+					final Matcher m = scalarPattern.matcher(line);
 					if (!m.find())
 						continue;
 

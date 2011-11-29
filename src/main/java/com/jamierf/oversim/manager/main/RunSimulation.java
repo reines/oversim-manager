@@ -16,11 +16,11 @@ public class RunSimulation {
 			}
 
 			// Load the config file
-			PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
+			final PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
 
 			// TODO: Setup defaults/check for missing
 
-			Manager manager = new Manager(config);
+			final Manager manager = new Manager(config);
 
 			for (String configName : args)
 				manager.addRunConfig(configName);

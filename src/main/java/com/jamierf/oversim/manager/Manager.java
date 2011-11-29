@@ -111,9 +111,9 @@ public class Manager {
 			throw new RuntimeException("Invalid result directory: " + resultRootDir.getCanonicalPath());
 
 		// Find OverSim - attempt to use the RELEASE version by default
-		File release = new File(workingDir, "../out/gcc-release/src/OverSim");
-		File debug = new File(workingDir, "../out/gcc-debug/src/OverSim");
-		File link = new File(workingDir, "../src/OverSim");
+		final File release = new File(workingDir, "../out/gcc-release/src/OverSim");
+		final File debug = new File(workingDir, "../out/gcc-debug/src/OverSim");
+		final File link = new File(workingDir, "../src/OverSim");
 		if (release.exists()) {
 			this.println("Using OverSim in RELEASE mode.");
 			overSim = release;
@@ -135,7 +135,7 @@ public class Manager {
 
 		// Create threads
 		for (int i = 0;i < maxThreads;i++) {
-			SimulationThread thread = new SimulationThread(this);
+			final SimulationThread thread = new SimulationThread(this);
 			threads.add(thread);
 		}
 
@@ -154,16 +154,16 @@ public class Manager {
 	}
 
 	public synchronized void addRunConfig(String configName) throws IOException {
-		int totalRunCount = this.countRuns(configName); // Fetch the total run count
+		final int totalRunCount = this.countRuns(configName); // Fetch the total run count
 		if (totalRunCount == 0)
 			throw new RuntimeException("Invalid config name, 0 runs found.");
 
-		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters, totalRunCount);
+		final SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters, totalRunCount);
 		pendingRuns += totalRunCount;
 
 		// Create the queue of simulation runs
 		for (int i = 0;i < totalRunCount;i++) {
-			SimulationRun run = new SimulationRun(i, workingDir, overSim, config);
+			final SimulationRun run = new SimulationRun(i, workingDir, overSim, config);
 			queue.add(run);
 		}
 
@@ -178,7 +178,7 @@ public class Manager {
 		configs.add(config);
 
 		if (web != null) {
-			ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
+			final ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
 
 			command.add("config", config.toString());
 			command.add("totalRunCount", totalRunCount);
@@ -191,26 +191,26 @@ public class Manager {
 	}
 
 	public synchronized void addDataConfig(String configName, String id) throws IOException {
-		SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, id);
+		final SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, id);
 
-		FilenameFilter filter = new FilenameFilter() {
+		final FilenameFilter filter = new FilenameFilter() {
 			@Override
 			public boolean accept(File dir, String name) {
 				return name.endsWith(".sca");
 			}
 		};
 
-		String[] files = config.getResultDir().list(filter);
-		Pattern pattern = Pattern.compile("^" + Pattern.quote(configName) + "-(\\d+)\\.sca$");
+		final String[] files = config.getResultDir().list(filter);
+		final Pattern pattern = Pattern.compile("^" + Pattern.quote(configName) + "-(\\d+)\\.sca$");
 
 		// Create the queue of simulation data
 		for (String file : files) {
-			Matcher m = pattern.matcher(file);
+			final Matcher m = pattern.matcher(file);
 			if (!m.matches())
 				continue;
 
-			int i = Integer.parseInt(m.group(1));
-			SimulationData data = new SimulationData(i, wantedScalars, config);
+			final int i = Integer.parseInt(m.group(1));
+			final SimulationData data = new SimulationData(i, wantedScalars, config);
 
 			queue.add(data);
 			config.pendingRuns++;
@@ -236,13 +236,13 @@ public class Manager {
 	}
 
 	protected int countRuns(String configName) throws IOException {
-		List<String> command = new LinkedList<String>();
+		final List<String> command = new LinkedList<String>();
 
 		command.add(overSim.getCanonicalPath());
 		command.add("-f" + configFile);
 		command.add("-x" + configName);
 
-		Process process = new ProcessBuilder(command).directory(workingDir).start();
+		final Process process = new ProcessBuilder(command).directory(workingDir).start();
 
 		BufferedReader in = null;
 		int runs = 0;
@@ -250,9 +250,9 @@ public class Manager {
 		try {
 			in = new BufferedReader(new InputStreamReader(process.getInputStream()));
 
-			Pattern p = Pattern.compile("Number of runs: (\\d+)");
+			final Pattern p = Pattern.compile("Number of runs: (\\d+)");
 			for (String line;(line = in.readLine()) != null;) {
-				Matcher m = p.matcher(line);
+				final Matcher m = p.matcher(line);
 				if (m.find())
 				{
 					runs = Integer.parseInt(m.group(1));
@@ -299,10 +299,10 @@ public class Manager {
 		this.println(thread + " starting " + runnable + ".");
 
 		if (runnable instanceof SimulationRun) {
-			SimulationRun run = (SimulationRun) runnable;
+			final SimulationRun run = (SimulationRun) runnable;
 
 			if (web != null) {
-				ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
+				final ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
 
 				command.add("config", run.getConfig().toString());
 				command.add("run", run.getRunId());
@@ -317,7 +317,7 @@ public class Manager {
 
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
-			SimulationRun run = (SimulationRun) runnable;
+			final SimulationRun run = (SimulationRun) runnable;
 			config = run.getConfig();
 
 			config.pendingRuns--;
@@ -330,7 +330,7 @@ public class Manager {
 			this.notifyAll();
 
 			if (web != null) {
-				ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
+				final ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
 
 				command.add("config", config.toString());
 				command.add("run", run.getRunId());
@@ -358,14 +358,14 @@ public class Manager {
 
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
-			SimulationRun run = (SimulationRun) runnable;
+			final SimulationRun run = (SimulationRun) runnable;
 			config = run.getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
 
 			if (web != null) {
-				ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
+				final ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
 
 				command.add("config", config.toString());
 				command.add("run", run.getRunId());
@@ -398,7 +398,7 @@ public class Manager {
 		}
 
 		if (web != null) {
-			ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
+			final ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
 
 			command.add("config", config.toString());
 
@@ -416,14 +416,15 @@ public class Manager {
 	}
 
 	public synchronized final void println(Object o) {
-		String line = o.toString();
+		final String line = o.toString();
 
 		System.out.println(line);
+
 		buffer.append(line);
 		buffer.append('\n');
 
 		if (web != null) {
-			ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
+			final ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
 			command.add("line", line);
 
 			web.sendMessage(command);

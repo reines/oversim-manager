@@ -16,11 +16,11 @@ public class ParseData {
 			}
 
 			// Load the config file
-			PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
+			final PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
 
 			// TODO: Setup defaults/check for missing
 
-			Manager manager = new Manager(config);
+			final Manager manager = new Manager(config);
 
 			manager.addDataConfig(args[0], args[1]);
 

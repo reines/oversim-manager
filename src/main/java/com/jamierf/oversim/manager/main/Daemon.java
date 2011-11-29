@@ -11,11 +11,11 @@ public class Daemon {
 	public static final void main(String[] args) {
 		try {
 			// Load the config file
-			PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
+			final PropertiesConfiguration config = new PropertiesConfiguration("manager.ini");
 
 			// TODO: Setup defaults/check for missing
 
-			Manager manager = new Manager(config);
+			final Manager manager = new Manager(config);
 			manager.start();
 		}
 		catch (IOException e) {

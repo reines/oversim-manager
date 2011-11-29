@@ -56,7 +56,7 @@ public class DataSet {
 		PrintWriter out = null;
 
 		try {
-			Collection<Object> row = new LinkedList<Object>();
+			final Collection<Object> row = new LinkedList<Object>();
 
 			out = new PrintWriter(new FileWriter(csvFile), true);
 
@@ -73,13 +73,13 @@ public class DataSet {
 
 			// Combine all sets and produce summary statistics
 			for (Map.Entry<String, Queue<String[]>> entry : data.entrySet()) {
-				String uid = entry.getKey();
-				Queue<String[]> queue = entry.getValue();
+				final String uid = entry.getKey();
+				final Queue<String[]> queue = entry.getValue();
 
 				if (queue.isEmpty())
 					continue;
 
-				SummaryStatistics[] stats = new SummaryStatistics[queue.peek().length];
+				final SummaryStatistics[] stats = new SummaryStatistics[queue.peek().length];
 				for (int i = 0;i < stats.length;i++)
 					stats[i] = new SummaryStatistics();
 

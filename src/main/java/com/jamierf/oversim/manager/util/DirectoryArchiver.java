@@ -48,28 +48,38 @@ public class DirectoryArchiver {
 
 	private ArchiveOutputStream createArchiveOutputStream(OutputStream out) throws IOException {
 		switch (type) {
-		case TAR_GZIP:
-			return new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
-		case ZIP:
-			return new ZipArchiveOutputStream(out);
-		default:
-			return null;
+			case TAR_GZIP: {
+				return new TarArchiveOutputStream(new GzipCompressorOutputStream(out));
+			}
+
+			case ZIP: {
+				return new ZipArchiveOutputStream(out);
+			}
+
+			default: {
+				return null;
+			}
 		}
 	}
 
 	private ArchiveEntry createArchiveEntry(File file, String name) throws IOException {
 		switch (type) {
-		case TAR_GZIP:
-			return new TarArchiveEntry(file, name);
-		case ZIP:
-			return new ZipArchiveEntry(file, name);
-		default:
-			return null;
+			case TAR_GZIP: {
+				return new TarArchiveEntry(file, name);
+			}
+
+			case ZIP: {
+				return new ZipArchiveEntry(file, name);
+			}
+
+			default: {
+				return null;
+			}
 		}
 	}
 
 	private void addFiletoArchive(ArchiveOutputStream out, File file, String base) throws IOException {
-		String name = base + file.getName();
+		final String name = base + file.getName();
 
 		// Add the entry to the archive
 		out.putArchiveEntry(createArchiveEntry(file, name));
@@ -77,7 +87,7 @@ public class DirectoryArchiver {
 		if (file.isDirectory()) {
 			out.closeArchiveEntry();
 
-			File[] children = file.listFiles();
+			final File[] children = file.listFiles();
 			for (File child : children)
 				addFiletoArchive(out, child, name + "/");
 		}

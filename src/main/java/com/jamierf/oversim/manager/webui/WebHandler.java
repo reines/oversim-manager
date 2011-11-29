@@ -30,10 +30,10 @@ public class WebHandler implements WebSocketHandler {
 	@Override
 	public synchronized void onMessage(WebSocketConnection connection, String message) throws Exception {
 		try{
-			ClientCommand command = new ClientCommand(message);
+			final ClientCommand command = new ClientCommand(message);
 
 			// Pass the command to the WebUI
-			ServerCommand reply = web.receiveMessage(command);
+			final ServerCommand reply = web.receiveMessage(command);
 			if (reply != null)
 				connection.send(reply.toString());
 		}
@@ -46,7 +46,7 @@ public class WebHandler implements WebSocketHandler {
 	public synchronized void onOpen(WebSocketConnection connection) throws Exception {
 		clients.add(connection);
 
-		ServerCommand reply = web.onOpen();
+		final ServerCommand reply = web.onOpen();
 		if (reply != null)
 			connection.send(reply.toString());
 	}

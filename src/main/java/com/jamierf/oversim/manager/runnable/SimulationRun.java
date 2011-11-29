@@ -34,9 +34,10 @@ public class SimulationRun implements Runnable {
 		return runId;
 	}
 
+	@Override
 	public void run() {
 		try {
-			List<String> command = new LinkedList<String>();
+			final List<String> command = new LinkedList<String>();
 
 			command.add("nice");
 			command.add(overSim.getCanonicalPath());
@@ -50,15 +51,15 @@ public class SimulationRun implements Runnable {
 				command.add("--" + entry.getKey() + "=" + entry.getValue());
 
 			// Execute OverSim
-			ProcessBuilder processBuilder = new ProcessBuilder(command);
+			final ProcessBuilder processBuilder = new ProcessBuilder(command);
 			processBuilder.directory(workingDir);
 			processBuilder.redirectErrorStream(true);
 
-			Process process = processBuilder.start();
+			final Process process = processBuilder.start();
 
 			// If we have a log directory then lets save a log
 			if (config.getLogDir() != null) {
-				File logFile = new File(config.getLogDir(), "run" + runId + ".log");
+				final File logFile = new File(config.getLogDir(), "run" + runId + ".log");
 
 				BufferedReader in = null;
 				PrintWriter out = null;
@@ -80,7 +81,7 @@ public class SimulationRun implements Runnable {
 			}
 
 			// Wait for the process to end (if we were logging it already has, but thats fine)
-			int result = process.waitFor();
+			final int result = process.waitFor();
 			if (result != 0)
 				throw new RuntimeException("OverSim run " + runId + " exited with result code: " + result);
 		}

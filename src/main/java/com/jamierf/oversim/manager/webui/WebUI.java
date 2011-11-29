@@ -42,13 +42,13 @@ public class WebUI {
 	}
 
 	public void sendMessage(ServerCommand command) {
-		String message = command.toString();
+		final String message = command.toString();
 
 		socketHandler.broadcast(message);
 	}
 
 	public ServerCommand onOpen() {
-		ServerCommand reply = new ServerCommand(ServerCommand.Type.NEW_CONNECTION);
+		final ServerCommand reply = new ServerCommand(ServerCommand.Type.NEW_CONNECTION);
 
 		reply.add("output", manager.getBuffer());
 		reply.add("paused", manager.isPaused());
@@ -57,7 +57,7 @@ public class WebUI {
 	}
 
 	public ServerCommand receiveMessage(ClientCommand command) throws Exception {
-		ClientCommandHandler handler = handlers.get(command.type);
+		final ClientCommandHandler handler = handlers.get(command.type);
 		if (handler == null)
 			return null;
 
