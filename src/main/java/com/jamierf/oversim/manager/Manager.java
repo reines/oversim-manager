@@ -254,8 +254,7 @@ public class Manager {
 			final Pattern p = Pattern.compile("Number of runs: (\\d+)");
 			for (String line;(line = in.readLine()) != null;) {
 				final Matcher m = p.matcher(line);
-				if (m.find())
-				{
+				if (m.find()) {
 					runs = Integer.parseInt(m.group(1));
 					break;
 				}

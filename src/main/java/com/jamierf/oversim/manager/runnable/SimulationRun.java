@@ -3,16 +3,20 @@ package com.jamierf.oversim.manager.runnable;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.jamierf.oversim.manager.SimulationConfig;
 
 public class SimulationRun implements Runnable {
+
+	private static final Logger logger = LoggerFactory.getLogger(SimulationRun.class);
 
 	protected final int runId;
 	protected final File workingDir;
@@ -89,13 +93,9 @@ public class SimulationRun implements Runnable {
 			if (result != 0)
 				throw new RuntimeException("OverSim run " + runId + " exited with result code: " + result);
 		}
-		catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+		catch (Exception e) {
+			if (logger.isWarnEnabled())
+				logger.warn("Error running simulation", e);
 		}
 	}
 
