@@ -39,7 +39,11 @@ public class SimulationRun implements Runnable {
 		try {
 			final List<String> command = new LinkedList<String>();
 
-			command.add("nice");
+			final String osName = System.getProperty("os.name").toLowerCase();
+			// If we are on linux, unix, or mac then run using nice
+			if (osName.contains("nix") || osName.contains("nux") || osName.contains("mac"))
+				command.add("nice");
+
 			command.add(overSim.getCanonicalPath());
 			command.add("-f" + config.getFile());
 			command.add("-c" + config.getName());
