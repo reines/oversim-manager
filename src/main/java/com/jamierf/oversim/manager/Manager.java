@@ -24,8 +24,6 @@ import org.apache.commons.lang.time.DurationFormatUtils;
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
 import com.jamierf.oversim.manager.util.DirectoryArchiver;
-import com.jamierf.oversim.manager.webui.ServerCommand;
-import com.jamierf.oversim.manager.webui.WebUI;
 
 public class Manager {
 
@@ -39,7 +37,6 @@ public class Manager {
 	protected final List<Runnable> queue;
 	protected final String[] wantedScalars;
 	protected final boolean deleteData;
-	protected final WebUI web;
 	protected final StringBuilder buffer;
 	protected final boolean shuffle;
 	protected boolean paused;
@@ -68,15 +65,6 @@ public class Manager {
 		shuffle = config.getBoolean("simulation.shuffle-runs", true);
 
 		buffer = new StringBuilder();
-
-		// Should we start the WebUI?
-		if (config.getBoolean("webui.enabled", false))
-		{
-			web = new WebUI(config.getInt("webui.port", 8090), this);
-			web.start();
-		}
-		else
-			web = null;
 
 		configs = new LinkedList<SimulationConfig>();
 
@@ -141,9 +129,6 @@ public class Manager {
 		}
 
 		this.println("Initialized " + threads.size() + " threads.");
-
-		if (web != null)
-			this.println("WebUI started at: " + web.getUri());
 	}
 
 	public synchronized void setPaused(boolean paused) {
@@ -177,16 +162,6 @@ public class Manager {
 		this.println("Queue size now: " + queue.size());
 
 		configs.add(config);
-
-		if (web != null) {
-			final ServerCommand command = new ServerCommand(ServerCommand.Type.ADDED_CONFIG);
-
-			command.add("config", config.toString());
-			command.add("totalRunCount", totalRunCount);
-			command.add("resultDir", config.getResultDir().getCanonicalPath());
-
-			web.sendMessage(command);
-		}
 
 		this.notifyAll();
 	}
@@ -228,10 +203,6 @@ public class Manager {
 		this.println("Queue size now: " + queue.size());
 
 		configs.add(config);
-
-		if (web != null) {
-			// TODO: WebUI call
-		}
 
 		this.notifyAll();
 	}
@@ -297,19 +268,6 @@ public class Manager {
 
 	public synchronized void started(SimulationThread thread, Runnable runnable) {
 		this.println(thread + " starting " + runnable + ".");
-
-		if (runnable instanceof SimulationRun) {
-			final SimulationRun run = (SimulationRun) runnable;
-
-			if (web != null) {
-				final ServerCommand command = new ServerCommand(ServerCommand.Type.STARTED_RUN);
-
-				command.add("config", run.getConfig().toString());
-				command.add("run", run.getRunId());
-
-				web.sendMessage(command);
-			}
-		}
 	}
 
 	public synchronized void completed(SimulationThread thread, Runnable runnable, long duration) {
@@ -328,16 +286,6 @@ public class Manager {
 			// Queue a data processing instance for this run
 			queue.add(new SimulationData(run.getRunId(), wantedScalars, run.getConfig()));
 			this.notifyAll();
-
-			if (web != null) {
-				final ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_RUN);
-
-				command.add("config", config.toString());
-				command.add("run", run.getRunId());
-				command.add("duration", duration);
-
-				web.sendMessage(command);
-			}
 
 			config.pendingRuns++;
 			pendingRuns++;
@@ -364,15 +312,6 @@ public class Manager {
 			config.pendingRuns--;
 			pendingRuns--;
 
-			if (web != null) {
-				final ServerCommand command = new ServerCommand(ServerCommand.Type.FAILED_RUN);
-
-				command.add("config", config.toString());
-				command.add("run", run.getRunId());
-
-				web.sendMessage(command);
-			}
-
 			config.failedRuns++;
 		}
 		else if (runnable instanceof SimulationData) {
@@ -397,14 +336,6 @@ public class Manager {
 			}
 		}
 
-		if (web != null) {
-			final ServerCommand command = new ServerCommand(ServerCommand.Type.COMPLETED_CONFIG);
-
-			command.add("config", config.toString());
-
-			web.sendMessage(command);
-		}
-
 		if (pendingRuns == 0) {
 			finished = true;
 			this.notifyAll();
@@ -422,22 +353,10 @@ public class Manager {
 
 		buffer.append(line);
 		buffer.append('\n');
-
-		if (web != null) {
-			final ServerCommand command = new ServerCommand(ServerCommand.Type.DISPLAY_LOG);
-			command.add("line", line);
-
-			web.sendMessage(command);
-		}
 	}
 
 	public synchronized void shutdown() {
 		this.println("Shutdown requested.");
-
-		if (web != null) {
-			web.sendMessage(new ServerCommand(ServerCommand.Type.SHUTDOWN));
-			try { web.stop(); } catch (IOException e) { }
-		}
 
 		System.exit(0);
 	}
