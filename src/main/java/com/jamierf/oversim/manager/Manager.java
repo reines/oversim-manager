@@ -1,29 +1,18 @@
 package com.jamierf.oversim.manager;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import com.jamierf.oversim.manager.runnable.SimulationData;
+import com.jamierf.oversim.manager.runnable.SimulationRun;
+import com.jamierf.oversim.manager.util.DirectoryArchiver;
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.time.DurationFormatUtils;
 
-import com.jamierf.oversim.manager.runnable.SimulationData;
-import com.jamierf.oversim.manager.runnable.SimulationRun;
-import com.jamierf.oversim.manager.util.DirectoryArchiver;
+import java.io.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Manager {
 
@@ -99,10 +88,12 @@ public class Manager {
 		if (!resultRootDir.isDirectory())
 			throw new ConfigurationException("Invalid result directory: " + resultRootDir.getCanonicalPath());
 
+        final String executableName = config.getString("simulation.executable-name", "OverSim");
+
 		// Find OverSim - attempt to use the RELEASE version by default
-		final File release = new File(workingDir, "../out/gcc-release/src/OverSim");
-		final File debug = new File(workingDir, "../out/gcc-debug/src/OverSim");
-		final File link = new File(workingDir, "../src/OverSim");
+		final File release = new File(workingDir, "../out/gcc-release/src/" + executableName);
+		final File debug = new File(workingDir, "../out/gcc-debug/src/" + executableName);
+		final File link = new File(workingDir, "../src/" + executableName);
 		if (release.exists()) {
 			this.println("Using OverSim in RELEASE mode.");
 			overSim = release;
