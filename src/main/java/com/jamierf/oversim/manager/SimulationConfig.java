@@ -32,11 +32,11 @@ public class SimulationConfig extends DataSet {
 		this.pendingRuns = pendingRuns;
 
 		resultDir = new File(resultRootDir, configName + "-" + id);
-		if (!resultDir.mkdir())
+		if (!resultDir.isDirectory() && !resultDir.mkdir())
 			throw new RuntimeException("Unable to create result subdirectory.");
 
 		logDir = new File(resultDir, "logs");
-		if (!logDir.mkdir())
+		if (!logDir.isDirectory() && !logDir.mkdir())
 			throw new RuntimeException("Unable to create logs subdirectory.");
 
 		// Create a map to hold overriding OverSim parameters for this specific config
