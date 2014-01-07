@@ -1,5 +1,6 @@
 package com.jamierf.oversim.manager;
 
+import org.apache.commons.lang.time.DurationFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -28,13 +29,16 @@ public class SimulationThread extends Thread {
 				break;
 
 			try {
-				long runStartTime = System.currentTimeMillis();
+				final long runStartTime = System.currentTimeMillis();
 
 				manager.started(this, runnable);
 				runnable.run();
 
+                final long duration = System.currentTimeMillis() - runStartTime;
+                manager.println(this + " completed " + runnable + " in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ".");
+
 				// Mark this simulation as completed
-				manager.completed(this, runnable, System.currentTimeMillis() - runStartTime);
+				manager.completed(runnable);
 			}
 			catch (Exception e) {
 				if (logger.isWarnEnabled())
