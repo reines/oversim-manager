@@ -269,7 +269,7 @@ public class Manager {
 	}
 
 	public synchronized void started(SimulationThread thread, Runnable runnable) {
-		this.println(thread + " starting " + runnable + ".");
+		this.println(thread + " starting " + runnable + ". (" + queue.size() + " left in queue)");
 	}
 
 	public synchronized void completed(Runnable runnable) {
