@@ -1,5 +1,10 @@
 package com.jamierf.oversim.manager.runnable;
 
+import com.jamierf.oversim.manager.SimulationConfig;
+import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -11,13 +16,7 @@ import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.jamierf.oversim.manager.SimulationConfig;
-
-public class SimulationData implements Runnable {
+public class SimulationData implements Run {
 
 	private static final Logger logger = LoggerFactory.getLogger(SimulationData.class);
 
@@ -31,6 +30,7 @@ public class SimulationData implements Runnable {
 		this.config = config;
 	}
 
+    @Override
 	public SimulationConfig getConfig() {
 		return config;
 	}

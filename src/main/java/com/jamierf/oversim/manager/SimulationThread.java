@@ -1,5 +1,6 @@
 package com.jamierf.oversim.manager;
 
+import com.jamierf.oversim.manager.runnable.Run;
 import org.apache.commons.lang.time.DurationFormatUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,7 +18,7 @@ public class SimulationThread extends Thread {
 	@Override
 	public void run() {
 		while (true) {
-			Runnable runnable = null;
+			Run runnable = null;
 
 			try {
 				runnable = manager.poll();

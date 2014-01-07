@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-public class SimulationRun implements Runnable {
+public class SimulationRun implements Run {
 
 	private static final Logger logger = LoggerFactory.getLogger(SimulationRun.class);
     private static final Set<String> RESULT_EXTENSIONS = ImmutableSet.of("sca", "vci", "vec");
@@ -28,6 +28,7 @@ public class SimulationRun implements Runnable {
 		this.config = config;
 	}
 
+    @Override
 	public SimulationConfig getConfig() {
 		return config;
 	}

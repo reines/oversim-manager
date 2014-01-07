@@ -1,5 +1,7 @@
 package com.jamierf.oversim.manager;
 
+import com.google.common.collect.Lists;
+import com.jamierf.oversim.manager.runnable.Run;
 import com.jamierf.oversim.manager.runnable.SimulationData;
 import com.jamierf.oversim.manager.runnable.SimulationRun;
 import com.jamierf.oversim.manager.util.DirectoryArchiver;
@@ -22,7 +24,7 @@ public class Manager {
 	protected final List<SimulationConfig> configs;
 	protected final Map<String, String> globalParameters;
 	protected final List<SimulationThread> threads;
-	protected final List<Runnable> queue;
+	protected final List<Run> queue;
 	protected final String[] wantedScalars;
 	protected final boolean deleteData;
 	protected final StringBuilder buffer;
@@ -107,7 +109,7 @@ public class Manager {
 			throw new FileNotFoundException("Unable to locate OverSim executable.");
 
 		threads = new ArrayList<SimulationThread>(maxThreads);
-		queue = new ArrayList<Runnable>();
+		queue = Lists.newArrayList();
 
 		pendingRuns = 0;
 		paused = false;
@@ -261,18 +263,19 @@ public class Manager {
 		this.shutdown();
 	}
 
-	public synchronized Runnable poll() throws InterruptedException {
-		while (queue.isEmpty())
+	public synchronized Run poll() throws InterruptedException {
+		while (queue.isEmpty()) {
 			this.wait();
+        }
 
 		return queue.remove(0);
 	}
 
-	public synchronized void started(SimulationThread thread, Runnable runnable) {
-		this.println(thread + " starting " + runnable + ". (" + queue.size() + " left in queue)");
+	public synchronized void started(SimulationThread thread, Run runnable) {
+		this.println(thread + " starting " + runnable + ". (" + queue.size() + " left in global queue, " + pendingRuns + " globally pending runs, " + runnable.getConfig().pendingRuns + " pending runs)");
 	}
 
-	public synchronized void completed(Runnable runnable) {
+	public synchronized void completed(Run runnable) {
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
 			final SimulationRun run = (SimulationRun) runnable;
@@ -284,14 +287,14 @@ public class Manager {
 			config.completedRuns++;
 
 			// Queue a data processing instance for this run
-			queue.add(new SimulationData(run.getRunId(), wantedScalars, run.getConfig()));
+			queue.add(new SimulationData(run.getRunId(), wantedScalars, config));
 			this.notifyAll();
 
 			config.pendingRuns++;
 			pendingRuns++;
 		}
 		else if (runnable instanceof SimulationData) {
-			config = ((SimulationData) runnable).getConfig();
+			config = runnable.getConfig();
 
 			config.pendingRuns--;
 			pendingRuns--;
