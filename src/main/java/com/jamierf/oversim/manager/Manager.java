@@ -7,7 +7,6 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.ConversionException;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.time.DurationFormatUtils;
 
 import java.io.*;
 import java.util.*;
@@ -130,27 +129,35 @@ public class Manager {
 		return paused;
 	}
 
-	public synchronized void addRunConfig(String configName) throws IOException {
+	public synchronized void addRunConfig(String configName, String id) throws IOException {
 		final int totalRunCount = this.countRuns(configName); // Fetch the total run count
 		if (totalRunCount == 0)
 			throw new RuntimeException("Invalid config name, 0 runs found.");
 
-		final SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, globalParameters, totalRunCount);
+		final SimulationConfig config = new SimulationConfig(configFile, configName, resultRootDir, id, globalParameters, totalRunCount);
 		pendingRuns += totalRunCount;
 
 		// Create the queue of simulation runs
 		for (int i = 0;i < totalRunCount;i++) {
 			final SimulationRun run = new SimulationRun(i, workingDir, overSim, config);
-			queue.add(run);
+            if (run.resultsExist()) {
+                this.completed(run);
+            }
+            // Only queue the run if the results don't already exist
+            else {
+			    queue.add(run);
+            }
 		}
 
 		// Shuffle the queue to help prevent bunching of memory intensive configurations
-		if (shuffle)
+		if (shuffle) {
 			Collections.shuffle(queue);
+        }
 
 		this.println("Added configuration: " + config + " with " + totalRunCount + " runs");
 		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
-		this.println("Queue size now: " + queue.size());
+		this.println("Pending: " + pendingRuns + " runs");
+		this.println("Queue size: " + queue.size());
 
 		configs.add(config);
 
@@ -173,8 +180,9 @@ public class Manager {
 		// Create the queue of simulation data
 		for (String file : files) {
 			final Matcher m = pattern.matcher(file);
-			if (!m.matches())
+			if (!m.matches()) {
 				continue;
+            }
 
 			final int i = Integer.parseInt(m.group(1));
 			final SimulationData data = new SimulationData(i, wantedScalars, config);
@@ -186,8 +194,9 @@ public class Manager {
 		pendingRuns += config.pendingRuns;
 
 		// Shuffle the queue to help prevent bunching of memory intensive configurations
-		if (shuffle)
+		if (shuffle) {
 			Collections.shuffle(queue);
+        }
 
 		this.println("Added result: " + config + " with " + config.completedRuns + " results.");
 		this.println("Result dir: " + config.getResultDir().getCanonicalPath());
@@ -240,11 +249,13 @@ public class Manager {
 		startTime = System.currentTimeMillis();
 
 		// Start all our threads
-		for (SimulationThread thread : threads)
+		for (SimulationThread thread : threads) {
 			thread.start();
+        }
 
-		while (!finished)
+		while (!finished) {
 			this.wait();
+        }
 
 		this.println("All runs completed, terminating.");
 		this.shutdown();
@@ -261,9 +272,7 @@ public class Manager {
 		this.println(thread + " starting " + runnable + ".");
 	}
 
-	public synchronized void completed(SimulationThread thread, Runnable runnable, long duration) {
-		this.println(thread + " completed " + runnable + " in " + DurationFormatUtils.formatDurationWords(duration, true, true) + ".");
-
+	public synchronized void completed(Runnable runnable) {
 		SimulationConfig config = null;
 		if (runnable instanceof SimulationRun) {
 			final SimulationRun run = (SimulationRun) runnable;
@@ -288,8 +297,9 @@ public class Manager {
 			pendingRuns--;
 		}
 
-		if (config != null)
+		if (config != null) {
 			checkForCompletion(config);
+        }
 	}
 
 	public synchronized void failed(SimulationThread thread, Runnable runnable) {

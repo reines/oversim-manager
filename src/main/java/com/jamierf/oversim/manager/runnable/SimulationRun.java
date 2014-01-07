@@ -1,22 +1,20 @@
 package com.jamierf.oversim.manager.runnable;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileWriter;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-
+import com.google.common.collect.ImmutableSet;
+import com.jamierf.oversim.manager.SimulationConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.jamierf.oversim.manager.SimulationConfig;
+import java.io.*;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class SimulationRun implements Runnable {
 
 	private static final Logger logger = LoggerFactory.getLogger(SimulationRun.class);
+    private static final Set<String> RESULT_EXTENSIONS = ImmutableSet.of("sca", "vci", "vec");
 
 	protected final int runId;
 	protected final File workingDir;
@@ -38,6 +36,17 @@ public class SimulationRun implements Runnable {
 		return runId;
 	}
 
+    public boolean resultsExist() {
+        for (String ext : RESULT_EXTENSIONS) {
+            final File file = new File(config.getResultDir(), String.format("%s-%d.%s", config.getName(), runId, ext));
+            if (!file.exists()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
 	@Override
 	public void run() {
 		try {
@@ -45,8 +54,9 @@ public class SimulationRun implements Runnable {
 
 			final String osName = System.getProperty("os.name").toLowerCase();
 			// If we are on linux, unix, or mac then run using nice
-			if (osName.contains("nix") || osName.contains("nux") || osName.contains("mac"))
+			if (osName.contains("nix") || osName.contains("nux") || osName.contains("mac")) {
 				command.add("nice");
+            }
 
 			command.add(overSim.getCanonicalPath());
 			command.add("-f" + config.getFile());
@@ -55,8 +65,9 @@ public class SimulationRun implements Runnable {
 			command.add("-r" + runId);
 
 			// Append any special parameters
-			for (Map.Entry<String, String> entry : config.getParameters().entrySet())
+			for (Map.Entry<String, String> entry : config.getParameters().entrySet()) {
 				command.add("--" + entry.getKey() + "=" + entry.getValue());
+            }
 
 			// Execute OverSim
 			final ProcessBuilder processBuilder = new ProcessBuilder(command);
@@ -90,8 +101,9 @@ public class SimulationRun implements Runnable {
 
 			// Wait for the process to end (if we were logging it already has, but thats fine)
 			final int result = process.waitFor();
-			if (result != 0)
+			if (result != 0) {
 				throw new RuntimeException("OverSim run " + runId + " exited with result code: " + result);
+            }
 		}
 		catch (Exception e) {
 			if (logger.isWarnEnabled())

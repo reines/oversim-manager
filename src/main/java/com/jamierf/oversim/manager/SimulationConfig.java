@@ -1,14 +1,13 @@
 package com.jamierf.oversim.manager;
 
+import com.jamierf.oversim.manager.util.DirectoryArchiver;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.time.DurationFormatUtils;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.time.DurationFormatUtils;
-
-import com.jamierf.oversim.manager.util.DirectoryArchiver;
 
 public class SimulationConfig extends DataSet {
 
@@ -24,29 +23,15 @@ public class SimulationConfig extends DataSet {
 	public int failedRuns;
 
 	public SimulationConfig(String configFile, String configName, File resultRootDir, String id) throws IOException {
-		this.configFile = configFile;
-		this.configName = configName;
-
-		resultDir = new File(resultRootDir, configName + "-" + id);
-		logDir = new File(resultDir, "logs");
-
-		parameters = new HashMap<String, String>();
-
-		// Add our result directory as an override parameter
-		parameters.put("result-dir", resultDir.getCanonicalPath());
-
-		startTime = System.currentTimeMillis();
-		pendingRuns = 0;
-		completedRuns = 0;
-		failedRuns = 0;
+        this (configFile, configName, resultRootDir, id, new HashMap<String, String>(), 0);
 	}
 
-	public SimulationConfig(String configFile, String configName, File resultRootDir, Map<String, String> globalParameters, int pendingRuns) throws IOException {
+	public SimulationConfig(String configFile, String configName, File resultRootDir, String id, Map<String, String> globalParameters, int pendingRuns) throws IOException {
 		this.configFile = configFile;
 		this.configName = configName;
 		this.pendingRuns = pendingRuns;
 
-		resultDir = new File(resultRootDir, configName + "-" + (System.currentTimeMillis() / 1000));
+		resultDir = new File(resultRootDir, configName + "-" + id);
 		if (!resultDir.mkdir())
 			throw new RuntimeException("Unable to create result subdirectory.");
 
