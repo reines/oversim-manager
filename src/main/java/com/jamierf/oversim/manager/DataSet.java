@@ -1,62 +1,63 @@
 package com.jamierf.oversim.manager;
 
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+import org.apache.commons.lang.StringUtils;
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.Map;
-import java.util.Queue;
-import java.util.SortedMap;
-import java.util.SortedSet;
-import java.util.TreeSet;
-
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.math.stat.descriptive.SummaryStatistics;
+import java.util.*;
 
 public class DataSet {
 
-	protected final SortedSet<String> headers;
-	protected final Map<String, Queue<String[]>> data;
+    protected final SortedSet<String> headers;
+	protected final SortedMap<String, SortedMap<String, Queue<String>>> data;
 
 	public DataSet() {
-		headers = new TreeSet<String>();
-		data = new HashMap<String, Queue<String[]>>();
+        headers = Sets.newTreeSet();
+		data = Maps.newTreeMap();
 	}
 
 	public void mergeData(String uid, SortedMap<String, String> scalars) {
 		synchronized (this) {
 			// Fetch the queue of data for this set of parameters
-			Queue<String[]> queue = data.get(uid);
-			if (queue == null) {
-				// If we already have a queue yet, create one
-				queue = new LinkedList<String[]>();
-				data.put(uid, queue);
+            SortedMap<String, Queue<String>> map = data.get(uid);
+			if (map == null) {
+				// If we don't already have a queue yet, create one
+				map = Maps.newTreeMap();
+				data.put(uid, map);
 			}
 
-			// If this is the first call, note the data headers
-			if (headers.isEmpty())
-				headers.addAll(scalars.keySet());
+            headers.addAll(scalars.keySet());
+            for (Map.Entry<String, String> scalar : scalars.entrySet()) {
+                Queue<String> queue = map.get(scalar.getKey());
+                if (queue == null) {
+                    queue = Lists.newLinkedList();
+                    map.put(scalar.getKey(), queue);
+                }
 
-			// Add this data to the end of the queue
-			queue.add(scalars.values().toArray(new String[scalars.size()]));
+                queue.add(scalar.getValue());
+            }
 		}
 	}
 
 	public synchronized boolean hasData() {
-		return !headers.isEmpty();
+		return !data.isEmpty();
 	}
 
 	public synchronized void writeCSV(File csvFile) throws IOException {
-		if (!this.hasData())
+		if (!this.hasData()) {
 			throw new RuntimeException("Cannot write empty data set to CSV.");
+        }
 
 		PrintWriter out = null;
 
 		try {
-			final Collection<Object> row = new LinkedList<Object>();
+			final Collection<Object> row = Lists.newLinkedList();
 
 			out = new PrintWriter(new FileWriter(csvFile), true);
 
@@ -72,26 +73,30 @@ public class DataSet {
 			out.println(StringUtils.join(row, ','));
 
 			// Combine all sets and produce summary statistics
-			for (Map.Entry<String, Queue<String[]>> entry : data.entrySet()) {
+			for (Map.Entry<String, SortedMap<String, Queue<String>>> entry : data.entrySet()) {
 				final String uid = entry.getKey();
-				final Queue<String[]> queue = entry.getValue();
+				final SortedMap<String, Queue<String>> map = entry.getValue();
 
-				if (queue.isEmpty())
+				if (map.isEmpty()) {
 					continue;
+                }
 
-				final SummaryStatistics[] stats = new SummaryStatistics[queue.peek().length];
-				for (int i = 0;i < stats.length;i++)
-					stats[i] = new SummaryStatistics();
+				final List<SummaryStatistics> stats = Lists.newLinkedList();
 
-				for (String[] next;(next = queue.poll()) != null;) {
-					for (int i = 0;i < stats.length;i++) {
-						try {
-							double value = Double.parseDouble(next[i]);
-							stats[i].addValue(value);
-						}
-						catch (NumberFormatException e) { }
-					}
-				}
+                for (String header : headers) {
+                    final SummaryStatistics summaryStats = new SummaryStatistics();
+                    stats.add(summaryStats);
+
+                    final Queue<String> values = map.get(header);
+                    if (values != null) {
+                        for (String value : values) {
+                            try {
+                                summaryStats.addValue(Double.parseDouble(value));
+                            }
+                            catch (NumberFormatException e) { }
+                        }
+                    }
+                }
 
 				// Output all the statistics into a row
 				row.clear();
